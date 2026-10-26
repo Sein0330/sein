@@ -4,3 +4,11 @@ geoip2==4.8.0
 python-dotenv==1.0.1
 slowapi==0.1.9
 rich
+pywebio
+pyxtermjs
+flask
+pyxtermjs
+flask
+eventlet
+gevent
+gevent-websocket
