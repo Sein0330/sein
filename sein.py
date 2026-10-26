@@ -495,9 +495,8 @@ def local_traceroute():
     target = Prompt.ask("Masukkan Domain/IP Server Tujuan (contoh: shopee.co.id / 8.8.8.8)")
     if not target: return
     
-    console.print("[cyan]Masukkan IP Publik Modem Pelanggan (Framed IP).[/cyan]")
-    console.print("[dim](Kosongkan/ENTER jika hanya ingin trace ke Server Tujuan)[/dim]")
-    ip_modem = Prompt.ask("IP Modem Pelanggan", default="").strip()
+    console.print("Masukan IP Modem pelanggan (bisa dicek dari https://whatismyipaddress.com/ *pastikan Device sudah terkoneksi ke Wifi Pelanggan)")
+    ip_modem = Prompt.ask("IP Modem Pelanggan (Framed IP)", default="").strip()
     
     # ================= TRACE 1: KE SERVER TUJUAN =================
     console.print(f"\n[cyan]Menarik data Traceroute dari Cloud (Indonesia) ke {target}...[/cyan]")
@@ -516,20 +515,27 @@ def local_traceroute():
     table.add_column("Latency", style="yellow")
     
     timeout_target = 0
+    max_lat_target = 0
     for h in hops_target:
         table.add_row(str(h["hop"]), h["ip"], h["lat"])
-        if h["ip"] == "-": timeout_target += 1
+        if h["ip"] == "-": 
+            timeout_target += 1
+        else:
+            try:
+                lat = float(h["lat"].replace("ms", ""))
+                if lat > max_lat_target: max_lat_target = lat
+            except: pass
             
     console.print("\n", table, "\n")
 
     # ================= TRACE 2: KE MODEM PELANGGAN =================
     timeout_cust = 0
+    max_lat_cust = 0
     if ip_modem:
-        # Cek apakah IP Private (NAT) buat jaga-jaga
         if ip_modem.startswith(("10.", "192.168.", "172.")):
             console.print(f"[warning]⚠️ IP Modem ({ip_modem}) terdeteksi sebagai IP Private/NAT.[/warning]")
             console.print("[warning]Traceroute Cloud ke Modem di-skip (Globalping butuh IP Publik).[/warning]")
-            ip_modem = "" # Batalkan trace ke modem
+            ip_modem = "" 
         else:
             console.print(f"[cyan]Menarik data Traceroute dari Cloud (Indonesia) ke Modem Pelanggan ({ip_modem})...[/cyan]")
             res_cust = run_globalping_trace(ip_modem, "ID")
@@ -545,44 +551,64 @@ def local_traceroute():
                 
                 for h in hops_cust:
                     table_cust.add_row(str(h["hop"]), h["ip"], h["lat"])
-                    if h["ip"] == "-": timeout_cust += 1
+                    if h["ip"] == "-": 
+                        timeout_cust += 1
+                    else:
+                        try:
+                            lat = float(h["lat"].replace("ms", ""))
+                            if lat > max_lat_cust: max_lat_cust = lat
+                        except: pass
                         
                 console.print("\n", table_cust, "\n")
 
-    # ================= ANALISIS =================
+    # ================= ANALISIS DETAIL =================
     console.print("[analisis]💡 ANALISIS & REKOMENDASI UNTUK NOC:[/analisis]")
     
-    if timeout_target > 3 and (not ip_modem or timeout_cust > 3):
-        console.print("- [danger]Kedua jalur (Tujuan & Pelanggan) banyak yang Timeout.[/danger]")
-        console.print("- Kemungkinan ada gangguan di backbone ISP atau target memblokir ICMP.")
-    elif timeout_target > 3 and timeout_cust <= 3:
-        console.print("- [warning]Jalur ke Server Tujuan Timeout, tapi jalur ke Pelanggan Normal.[/warning]")
-        console.print("- Berarti koneksi dari ISP ke rumah pelanggan AMAN. Masalah ada di rute peering ke Server Tujuan.")
-        console.print("- [bold yellow]Saran:[/bold yellow] Eskalasi ke NOC untuk pengecekan BGP Peering ke arah target.")
-    elif timeout_target <= 3 and ip_modem and timeout_cust > 3:
-        console.print("- [warning]Jalur ke Server Tujuan Normal, tapi jalur ke Pelanggan Timeout.[/warning]")
-        console.print("- Berarti ada masalah di jaringan lokal pelanggan (ODP/Kabel/Modem).")
-        console.print("- [bold yellow]Saran:[/bold yellow] Kirim teknisi untuk cek redaman/kabel.")
-    elif ip_modem and timeout_target <= 3 and timeout_cust <= 3:
-        console.print("- [success]Kedua jalur (Tujuan & Pelanggan) terlihat normal.[/success]")
-        console.print("- Jika pelanggan masih komplain, kemungkinan masalahnya di aplikasi/HP pelanggan.")
+    console.print(f"[bold]1. Evaluasi Rute ke {target}:[/bold]")
+    if timeout_target > 3:
+        console.print(f"   - [danger]Ditemukan {timeout_target} Hop Timeout (Packet Loss).[/danger]")
+        console.print(f"   - Latency maksimum yang berhasil direkam: {max_lat_target} ms.")
+        console.print("   - Indikasi: Target memblokir ICMP atau ada kongesti rute internasional.")
     else:
-        console.print("- [info]Hanya melakukan trace ke Server Tujuan.[/info]")
-        if timeout_target > 3:
-            console.print("- [warning]Jalur ke Server Tujuan Timeout. Eskalasi ke NOC.[/warning]")
+        console.print(f"   - [success]Rute Normal. Latency maksimum: {max_lat_target} ms.[/success]")
+        
+    if ip_modem:
+        console.print(f"\n[bold]2. Evaluasi Rute ke Pelanggan ({ip_modem}):[/bold]")
+        if timeout_cust > 3:
+            console.print(f"   - [danger]Ditemukan {timeout_cust} Hop Timeout menuju pelanggan.[/danger]")
+            console.print(f"   - Latency maksimum: {max_lat_cust} ms.")
+            console.print("   - Indikasi: Masalah pada jaringan akses (ODP/Kabel) atau modem pelanggan memblokir ICMP.")
         else:
-            console.print("- [success]Rute ke Server Tujuan Normal.[/success]")
+            console.print(f"   - [success]Rute Normal. Latency maksimum: {max_lat_cust} ms.[/success]")
 
-    # ================= FORMAT LAPORAN =================
+    # ================= KESIMPULAN & REKOMENDASI =================
+    console.print("\n[bold yellow]📋 KESIMPULAN & AKSI:[/bold yellow]")
+    if timeout_target > 3 and (not ip_modem or timeout_cust > 3):
+        console.print("- [danger]Kedua jalur mengalami Packet Loss / Timeout signifikan.[/danger]")
+        console.print("- [bold]Aksi:[/bold] Eskalasi ke NOC (Backbone). Lampirkan laporan di bawah.")
+    elif timeout_target > 3 and timeout_cust <= 3:
+        console.print("- [warning]Jalur ke Target Timeout, tapi jalur ke Pelanggan Normal.[/warning]")
+        console.print("- [bold]Aksi:[/bold] Eskalasi ke NOC (Peering). Masalah ada di rute keluar ISP menuju server target.")
+    elif timeout_target <= 3 and ip_modem and timeout_cust > 3:
+        console.print("- [warning]Jalur ke Target Normal, tapi jalur ke Pelanggan Timeout.[/warning]")
+        console.print("- [bold]Aksi:[/bold] Kirim Teknisi. Masalah ada di sisi akses pelanggan (ODP/Kabel).")
+    elif ip_modem and timeout_target <= 3 and timeout_cust <= 3:
+        console.print("- [success]Kedua jalur (Target & Pelanggan) terlihat NORMAL.[/success]")
+        console.print("- [bold]Aksi:[/bold] Jaringan ISP aman. Cek WiFi/HP pelanggan atau tunggu server target pulih.")
+    else:
+        console.print("- [info]Hanya trace ke Target. Jika ada timeout, eskalasi ke NOC.[/info]")
+
+    # ================= FORMAT LAPORAN NOC (DETAIL) =================
     if timeout_target > 3 or (ip_modem and timeout_cust > 3):
         console.print("\n[bold yellow]📋 FORMAT LAPORAN NOC (Copy-Paste):[/bold yellow]")
         console.print(f"Kepada Tim DSO/NOC,")
-        console.print(f"Mohon bantu cek rute ke {target}. Pelanggan dengan IP Modem {ip_modem or '(tidak diisi)'} mengalami kendala.")
-        if timeout_target > 3:
-            console.print("Terdapat indikasi packet loss / timeout pada jalur backbone menuju server target. Mohon cek BGP peering.")
-        if ip_modem and timeout_cust > 3:
-            console.print("Terdapat juga timeout pada jalur ke IP Modem pelanggan. Mohon cek kualitas jaringan lokal/ODP.")
-        console.print("Terlampir hasil traceroute dari sisi Cloud.")
+        console.print(f"Mohon bantu pengecekan rute jaringan untuk pelanggan berikut:")
+        console.print(f" - Target Keluhan : {target}")
+        if ip_modem: console.print(f" - IP Modem       : {ip_modem}")
+        console.print(f" - Hasil Trace ke Target  : {timeout_target} Hop Timeout (Max Latency: {max_lat_target} ms)")
+        if ip_modem:
+            console.print(f" - Hasil Trace ke Pelanggan : {timeout_cust} Hop Timeout (Max Latency: {max_lat_cust} ms)")
+        console.print(f"\nMohon bantu cek routing BGP / peering ke arah target, atau kualitas ODP jika jalur pelanggan yang putus. Terlampir hasil traceroute.")
     
     pause()
 
