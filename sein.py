@@ -8,11 +8,15 @@ import subprocess
 import platform
 import re
 import time
+import asyncio
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.table import Table
 from rich.theme import Theme
+from gladius_engine import run_gladius
+from rich_pixels import Pixels
+from PIL import Image
 
 # Setup tema warna
 custom_theme = Theme({
@@ -55,7 +59,8 @@ def show_logo():
    ███████║███████╗██║██║ ╚████║
    ╚══════╝╚══════╝╚═╝╚═╝  ╚═══╝
 [/bold cyan]
-[dim]   IP Tracker & Network Engineer Toolkit v3.0[/dim]
+[bold white]   Systematic Exploration - Internet Network[/bold white]
+[dim]   "Support tools untuk analisa & evaluasi kualitas layanan pelanggan | By 96250009"[/dim]
     """
     console.print(logo)
 
@@ -67,15 +72,17 @@ def menu():
         console.print("[menu](2)[/menu] Network Tools (WHOIS, DNS, Port, Header)")
         console.print("[menu](3)[/menu] Multi-Path Analyzer (Diagnosa Game RTO)")
         console.print("[menu](4)[/menu] ISP Pro Toolkit (ASN, Recon, Adv Ping, Trace)")
-        console.print("[menu](5)[/menu] Exit\n")
+        console.print("[menu](5)[/menu] Cek Embasy (Gladius Auto-Scraper)")
+        console.print("[menu](6)[/menu] Exit\n")
         
-        choice = Prompt.ask("[bold yellow]Pilih menu[/bold yellow]", choices=["1", "2", "3", "4", "5"])
+        choice = Prompt.ask("[bold yellow]Pilih menu[/bold yellow]", choices=["1", "2", "3", "4", "5", "6"])
         
         if choice == "1": track_ip()
         elif choice == "2": network_menu()
         elif choice == "3": path_analyzer()
         elif choice == "4": isp_pro_menu()
-        elif choice == "5":
+        elif choice == "5": cek_embasy()
+        elif choice == "6":
             console.print("[info]Keluar dari SEIN. Sampai jumpa![/info]")
             sys.exit(0)
 
@@ -103,7 +110,6 @@ def track_ip():
                 table.add_row("Timezone", str(data.get('timezone') or "Unknown"))
                 console.print("\n", table, "\n")
                 
-                # ANALISIS
                 console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
                 if data.get('country') == "Indonesia":
                     console.print("- IP ini terdaftar di Indonesia.")
@@ -111,11 +117,8 @@ def track_ip():
                 else:
                     console.print("- IP ini terdaftar di luar Indonesia (atau routing internasional).")
                     console.print("- Kemungkinan pelanggan menggunakan VPN, atau IP server game berada di luar negeri.")
-                console.print("- Catatan: IP Geolocation tidak bisa digunakan untuk melacak alamat presisi (rumah) pelanggan.")
-                
             elif res.status_code == 404:
                 console.print("[warning]Gagal: IP tidak ditemukan di database.[/warning]")
-                console.print("[analisis]💡 ANALISIS: IP Private/Lokal tidak akan ditemukan di database publik.[/analisis]")
             else:
                 console.print(f"[danger]Error {res.status_code}: {res.text}[/danger]")
         except Exception as e:
@@ -191,8 +194,7 @@ def dns_checker():
         console.print("- [warning]Tidak ada A Record ditemukan.[/warning] Domain mungkin tidak aktif atau pakai IP dedicated.")
     else:
         console.print("- Domain aktif (punya A Record).")
-        console.print("- Jika ada MX Record, berarti domain ini terhubung ke layanan email (Google/Microsoft/dll).")
-        console.print("- Gunakan info ini untuk audit DNS kantor atau mendeteksi domain palsu (phishing).")
+        console.print("- Jika ada MX Record, berarti domain ini terhubung ke layanan email.")
     pause()
 
 def port_scanner():
@@ -227,11 +229,11 @@ def port_scanner():
         console.print(f"- Ditemukan {len(open_ports)} port terbuka.")
         for p, s in open_ports:
             if p in [21, 23, 3306]:
-                console.print(f"- [danger]PERINGATAN: Port {p} ({s}) terbuka! Ini berisiko tinggi jika terekspos ke internet.[/danger]")
+                console.print(f"- [danger]PERINGATAN: Port {p} ({s}) terbuka! Ini berisiko tinggi.[/danger]")
             elif p == 3389:
                 console.print(f"- [warning]Port 3389 (RDP) terbuka. Pastikan pakai VPN/Whitelist IP.[/warning]")
             else:
-                console.print(f"- Port {p} ({s}) terbuka. Pastikan ini port yang memang dibutuhkan untuk layanan publik.")
+                console.print(f"- Port {p} ({s}) terbuka. Pastikan ini port yang memang dibutuhkan.")
     pause()
 
 def http_inspector():
@@ -253,12 +255,10 @@ def http_inspector():
             if res.status_code == 200:
                 console.print("- Website merespon dengan baik (200 OK).")
             elif res.status_code in [301, 302]:
-                console.print("- Website melakukan redirect. Normal untuk HTTP ke HTTPS.")
+                console.print("- Website melakukan redirect.")
             else:
                 console.print(f"- Status code {res.status_code}. Cek apakah web sedang down atau butuh auth.")
             
-            if "server" in res.headers:
-                console.print(f"- Web server: {res.headers['server']}. Pastikan versi tidak usang (vulnerable).")
             if "strict-transport-security" not in res.headers:
                 console.print("- [warning]HSTS tidak aktif. Disarankan mengaktifkan HSTS untuk keamanan HTTPS.[/warning]")
         except Exception as e:
@@ -344,7 +344,6 @@ def path_analyzer():
     console.print("\n[bold green]📝 REKOMENDASI UNTUK CS/TEKNISI:[/bold green]")
     console.print("1. Sampaikan ke pelanggan bahwa rute jaringan dari ISP ke Server Game terpantau **NORMAL**.")
     console.print("2. RTO/Lag murni karena kebijakan Server Game atau masalah di sisi Game, **BUKAN** dari jaringan ISP.")
-    console.print("3. Jika pelanggan masih komplain, sarankan ganti region akun atau tes menggunakan VPN.")
     pause()
 
 # ================= FITUR 4: ISP PRO TOOLKIT =================
@@ -376,7 +375,6 @@ def asn_lookup():
             console.print(result.stdout)
             console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
             console.print("- Data ASN menunjukkan siapa pemilik IP (Provider/Perusahaan).")
-            console.print("- Jika IP ini milik provider lain, berarti rute data pelanggan keluar dari jaringan ISP kita.")
             console.print("- Jika ini IP internal ISP kita, pastikan tidak ada konflik routing BGP.")
         else:
             console.print("[warning]Gagal narik data ASN. Coba lagi.[/warning]")
@@ -419,8 +417,8 @@ def subdomain_recon():
                         table.add_row(sub, "-", "-")
                 console.print("\n", table, "\n")
                 console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
-                console.print("- Subdomain yang terekspos (bocor) bisa jadi celah keamanan jika tidak di-update.")
-                console.print("- Gunakan info ini untuk audit domain kantor atau investigasi domain penipu.")
+                console.print("- Subdomain yang terekspos bisa jadi celah keamanan jika tidak di-update.")
+                console.print("- Gunakan info ini untuk audit domain kantor.")
             else:
                 console.print("[warning]Gak ada subdomain ditemukan.[/warning]")
         else:
@@ -478,19 +476,15 @@ def advanced_ping():
         console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
         if loss == 100:
             console.print("- [danger]Target tidak merespon ping (100% Loss).[/danger]")
-            console.print("- Kemungkinan 1: Target (IP Modem/HP) memblokir ICMP (Anti-DDoS/Firewall).")
-            console.print("- Kemungkinan 2: IP Private/NAT (seperti IP Telkomsel/Indihome yang di-NAT).")
-            console.print("- Kemungkinan 3: Server sedang down atau kabel putus.")
-            console.print("- Saran: Jika target adalah pelanggan, coba ping ke IP BRAS atau server game untuk membandingkan.")
+            console.print("- Kemungkinan: IP Private/NAT (seperti Telkomsel), Firewall diblokir, atau server down.")
         elif loss > 0:
             console.print(f"- [warning]Terjadi Packet Loss sebesar {loss}%.[/warning]")
-            console.print("- Koneksi tidak stabil. Cek kualitas kabel LAN, WiFi, atau redaman optik (jika FTTH).")
+            console.print("- Koneksi tidak stabil. Cek kualitas kabel LAN, WiFi, atau redaman optik.")
         elif jitter > 10:
             console.print("- [warning]Jitter tinggi (koneksi naik-turun).[/warning]")
-            console.print("- Sering terjadi saat ada download besar (Bufferbloat) atau kongesti jaringan.")
+            console.print("- Sering terjadi saat ada download besar (Bufferbloat).")
         else:
             console.print("- [success]Koneksi stabil dan sehat.[/success]")
-            console.print("- RTT dan Jitter dalam batas normal. Siap digunakan untuk gaming/streaming.")
             
     except Exception as e:
         console.print(f"[danger]Error saat ping: {e}[/danger]")
@@ -510,11 +504,81 @@ def local_traceroute():
         
         console.print("\n[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
         console.print("- Traceroute menunjukkan jalur (hop) paket dari server ini ke target.")
-        console.print("- Jika ada hop yang 'Timeout', itu wajar (router memblokir ping).")
-        console.print("- Jika ada lonjakan latency (misal dari 10ms langsung ke 200ms), itu titik kongesti (bottleneck).")
-        console.print("- Gunakan data ini untuk eskalasi ke NOC jika rute terlihat suboptimal (muter-muter).")
+        console.print("- Jika ada lonjakan latency (misal dari 10ms ke 200ms), itu titik kongesti (bottleneck).")
     except Exception as e:
         console.print(f"[danger]Gagal traceroute: {e}[/danger]")
+    pause()
+
+# ================= FITUR 5: CEK EMBASY =================
+def cek_embasy():
+    show_header("Cek Embasy (Gladius Scraper)")
+    console.print("[bold]Masukkan data pelanggan.[/bold]")
+    
+    # Validasi Nomor Internet (Harus Angka)
+    while True:
+        nomor = Prompt.ask("Nomor Internet (contoh: 131169107209)").strip()
+        if nomor.isdigit() and len(nomor) >= 8:
+            break
+        console.print("[bold red]❌ Error: Nomor Internet harus berupa ANGKA dan minimal 8 digit![/bold red]")
+        
+    # Validasi Domain (Gak boleh kosong)
+    while True:
+        domain = Prompt.ask("Domain (contoh: telkom.net)", default="telkom.net").strip()
+        if domain:
+            break
+        console.print("[bold red]❌ Error: Domain tidak boleh kosong![/bold red]")
+    
+    console.print("[cyan]Memeriksa data pelanggan, mohon tunggu...[/cyan]")
+    
+    try:
+        summary_data, result = asyncio.run(run_gladius(nomor, domain))
+        
+        if summary_data:
+            table = Table(title=f"Summary Pelanggan: {nomor}", show_header=True, header_style="bold magenta")
+            table.add_column("Parameter", style="cyan")
+            table.add_column("Value", style="green")
+            
+            table.add_row("Nomor", summary_data.get("Nomor", "-"))
+            table.add_row("Domain", summary_data.get("Domain", "-"))
+            table.add_row("IP Statik", summary_data.get("IP Statik", "-"))
+            table.add_row("Paket", summary_data.get("Paket", "-"))
+            table.add_row("Status Pelanggan", summary_data.get("Status", "-"))
+            table.add_row("Port Binding", summary_data.get("Port Binding", "-"))
+            table.add_row("EQN", summary_data.get("EQN", "-"))
+            table.add_row("IP OLT", summary_data.get("IP OLT", "-"))
+            table.add_row("ONU Rx Power", summary_data.get("Rx Power", "-"))
+            table.add_row("NAS IP (BRAS)", summary_data.get("NAS IP", "-"))
+            table.add_row("Framed IP (Modem)", summary_data.get("Framed IP", "-"))
+            table.add_row("Status Koneksi", summary_data.get("Status Koneksi", "-"))
+            
+            console.print("\n", table, "\n")
+            # Gambar disimpan diam-diam aja
+            
+
+            
+            download_url = f"https://tracker.sein.bid/download/{result}"
+            console.print(f"[bold cyan]🔗 Download Capture: [underline]{download_url}[/underline][/bold cyan]\n")
+            console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
+            if summary_data.get("Status Koneksi") == "Interim-Update":
+                console.print("- Status Koneksi: ONLINE (Interim-Update). Modem pelanggan terhubung ke jaringan.")
+            elif summary_data.get("Status Koneksi") == "-":
+                console.print("- [warning]Status Koneksi Kosong. Modem pelanggan mungkin OFFLINE atau belum ada sesi PPPoE.[/warning]")
+            
+            try:
+                rx_power = float(summary_data.get("Rx Power", "-").replace(" dBm", ""))
+                if rx_power < -27:
+                    console.print(f"- [danger]Rx Power lemah ({rx_power} dBm). Cek redaman kabel optik![/danger]")
+                else:
+                    console.print(f"- Rx Power normal ({rx_power} dBm). Kualitas optik bagus.")
+            except:
+                pass
+                
+        else:
+            console.print(f"[danger]❌ Gagal: {result}[/danger]")
+            
+    except Exception as e:
+        console.print(f"[danger]❌ Error sistem: {e}[/danger]")
+        
     pause()
 
 if __name__ == "__main__":

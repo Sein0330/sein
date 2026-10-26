@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Depends, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Depends, Request, HTTPException
+from fastapi.responses import JSONResponse, FileResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+import os
 
 from app.core.config import settings
 from app.core.security import verify_cloudflare, verify_api_key
@@ -18,18 +19,14 @@ app = FastAPI(
     openapi_url=None
 )
 
-# Pasang rate limiter ke app
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Daftarin router
 app.include_router(track.router)
 app.include_router(decoy.router)
 
-# Pasang proteksi Cloudflare global
 app.dependencies = [Depends(verify_cloudflare)]
 
-# Handler error generic (biar stack trace gak bocor)
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
@@ -37,7 +34,6 @@ async def generic_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal Server Error"}
     )
 
-# Handler 404 (Not Found) generic
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc):
     return JSONResponse(
@@ -46,7 +42,7 @@ async def not_found_handler(request: Request, exc):
     )
 
 @app.get("/")
-@limiter.limit("10/minute") # Health check lebih ketat (10x per menit)
+@limiter.limit("10/minute")
 async def health_check(request: Request):
     return {"status": "ok"}
 
@@ -55,6 +51,21 @@ async def about(auth_type: str = Depends(verify_api_key)):
     return {
         "app": settings.APP_NAME,
         "version": "1.0.0",
-        "attribution": "GeoLite2 data created by MaxMind, available from https://www.maxmind.com",
+        "attribution": "GeoLite2 data created by MaxMind",
         "auth_mode": auth_type
     }
+
+# ================= ENDPOINT DOWNLOAD FILE =================
+@app.get("/download/{filename}")
+async def download_file(filename: str):
+    # Path folder tempat nyimpen hasil capture
+    file_path = f"/home/almaarij/sein/{filename}"
+    
+    # Keamanan: cegah path traversal (../)
+    if ".." in filename or "/" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+        
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+        
+    return FileResponse(path=file_path, filename=filename, media_type="image/png")
