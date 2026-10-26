@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, Request
 from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.security import verify_cloudflare, verify_api_key
+from app.routers import decoy
 from app.routers import track
 
 app = FastAPI(
@@ -13,6 +14,7 @@ app = FastAPI(
 
 # Daftarin router
 app.include_router(track.router)
+app.include_router(decoy.router)
 
 # Pasang proteksi Cloudflare global
 app.dependencies = [Depends(verify_cloudflare)]
