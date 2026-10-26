@@ -4,20 +4,42 @@ __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
+.pytest_cache/
 
-# Env & secret
+# Env & Secret
 .env
 .env.local
 
-# Data & log (jangan masuk git)
+# Data & Log (JANGAN PERNAH COMMIT)
 data/*.mmdb
 logs/
 *.log
+captcha_temp/
+*.png
+*.jpg
+*.jpeg
+*.html
+*.json
+!package.json
 
-# OS
+# OS & Editor
 .DS_Store
 Thumbs.db
-
-# Editor
 .vscode/
 .idea/
+
+# File Spesifik SEIN
+gladius_spy.py
+spy_otp.py
+test_captcha.py
+test_ocr.py
+save_session.py
+gladius_login.html
+gladius_login.png
+debug_otp_page.png
+debug_radonline.png
+captcha_hardcore.png
+last_captcha.png
+temp_top.png
+hasil_*.png
+state.json
