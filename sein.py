@@ -15,8 +15,6 @@ from rich.prompt import Prompt
 from rich.table import Table
 from rich.theme import Theme
 from gladius_engine import run_gladius
-from rich_pixels import Pixels
-from PIL import Image
 
 # Setup tema warna
 custom_theme = Theme({
@@ -353,7 +351,7 @@ def isp_pro_menu():
         console.print("[menu](1)[/menu] BGP / ASN Lookup (Route Intelligence)")
         console.print("[menu](2)[/menu] Subdomain & Reverse DNS Recon")
         console.print("[menu](3)[/menu] Advanced Ping Checker (Loss, Jitter, RTT)")
-        console.print("[menu](4)[/menu] Local Traceroute (ISP Side)")
+        console.print("[menu](4)[/menu] Traceroute (NOC Escalation)")
         console.print("[menu](5)[/menu] Kembali ke Menu Utama\n")
         
         choice = Prompt.ask("[bold yellow]Pilih tool[/bold yellow]", choices=["1", "2", "3", "4", "5"])
@@ -491,22 +489,101 @@ def advanced_ping():
     pause()
 
 def local_traceroute():
-    show_header("ISP Pro Toolkit > Local Traceroute")
-    target = Prompt.ask("Masukkan IP/Host (contoh: 8.8.8.8)")
+    show_header("ISP Pro Toolkit > Traceroute (NOC Escalation)")
+    console.print("[bold]Diagnosa Rute & Eskalasi ke DSO/NOC (Manual Dual-Trace)[/bold]\n")
+    
+    target = Prompt.ask("Masukkan Domain/IP Server Tujuan (contoh: shopee.co.id / 8.8.8.8)")
     if not target: return
     
-    console.print(f"[cyan]Traceroute lokal ke {target}...[/cyan]")
-    try:
-        cmd = ['traceroute', '-n', target] if platform.system().lower() != 'windows' else ['tracert', '-n', target]
-        process = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30)
-        lines = process.stdout.strip().split('\n')
-        console.print("\n".join(lines[:15]))
+    console.print("[cyan]Masukkan IP Publik Modem Pelanggan (Framed IP).[/cyan]")
+    console.print("[dim](Kosongkan/ENTER jika hanya ingin trace ke Server Tujuan)[/dim]")
+    ip_modem = Prompt.ask("IP Modem Pelanggan", default="").strip()
+    
+    # ================= TRACE 1: KE SERVER TUJUAN =================
+    console.print(f"\n[cyan]Menarik data Traceroute dari Cloud (Indonesia) ke {target}...[/cyan]")
+    res_target = run_globalping_trace(target, "ID")
+    
+    if "error" in res_target:
+        console.print(f"[danger]Gagal trace ke {target}: {res_target['error']}[/danger]")
+        pause()
+        return
         
-        console.print("\n[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
-        console.print("- Traceroute menunjukkan jalur (hop) paket dari server ini ke target.")
-        console.print("- Jika ada lonjakan latency (misal dari 10ms ke 200ms), itu titik kongesti (bottleneck).")
-    except Exception as e:
-        console.print(f"[danger]Gagal traceroute: {e}[/danger]")
+    hops_target = extract_hops(res_target)
+    
+    table = Table(title=f"Traceroute Cloud ke Server Tujuan ({target})", show_header=True, header_style="bold magenta")
+    table.add_column("Hop", style="cyan", justify="right")
+    table.add_column("IP Address", style="green")
+    table.add_column("Latency", style="yellow")
+    
+    timeout_target = 0
+    for h in hops_target:
+        table.add_row(str(h["hop"]), h["ip"], h["lat"])
+        if h["ip"] == "-": timeout_target += 1
+            
+    console.print("\n", table, "\n")
+
+    # ================= TRACE 2: KE MODEM PELANGGAN =================
+    timeout_cust = 0
+    if ip_modem:
+        # Cek apakah IP Private (NAT) buat jaga-jaga
+        if ip_modem.startswith(("10.", "192.168.", "172.")):
+            console.print(f"[warning]⚠️ IP Modem ({ip_modem}) terdeteksi sebagai IP Private/NAT.[/warning]")
+            console.print("[warning]Traceroute Cloud ke Modem di-skip (Globalping butuh IP Publik).[/warning]")
+            ip_modem = "" # Batalkan trace ke modem
+        else:
+            console.print(f"[cyan]Menarik data Traceroute dari Cloud (Indonesia) ke Modem Pelanggan ({ip_modem})...[/cyan]")
+            res_cust = run_globalping_trace(ip_modem, "ID")
+            
+            if "error" in res_cust:
+                console.print(f"[danger]Gagal trace ke pelanggan: {res_cust['error']}[/danger]")
+            else:
+                hops_cust = extract_hops(res_cust)
+                table_cust = Table(title=f"Traceroute Cloud ke Modem Pelanggan ({ip_modem})", show_header=True, header_style="bold magenta")
+                table_cust.add_column("Hop", style="cyan", justify="right")
+                table_cust.add_column("IP Address", style="green")
+                table_cust.add_column("Latency", style="yellow")
+                
+                for h in hops_cust:
+                    table_cust.add_row(str(h["hop"]), h["ip"], h["lat"])
+                    if h["ip"] == "-": timeout_cust += 1
+                        
+                console.print("\n", table_cust, "\n")
+
+    # ================= ANALISIS =================
+    console.print("[analisis]💡 ANALISIS & REKOMENDASI UNTUK NOC:[/analisis]")
+    
+    if timeout_target > 3 and (not ip_modem or timeout_cust > 3):
+        console.print("- [danger]Kedua jalur (Tujuan & Pelanggan) banyak yang Timeout.[/danger]")
+        console.print("- Kemungkinan ada gangguan di backbone ISP atau target memblokir ICMP.")
+    elif timeout_target > 3 and timeout_cust <= 3:
+        console.print("- [warning]Jalur ke Server Tujuan Timeout, tapi jalur ke Pelanggan Normal.[/warning]")
+        console.print("- Berarti koneksi dari ISP ke rumah pelanggan AMAN. Masalah ada di rute peering ke Server Tujuan.")
+        console.print("- [bold yellow]Saran:[/bold yellow] Eskalasi ke NOC untuk pengecekan BGP Peering ke arah target.")
+    elif timeout_target <= 3 and ip_modem and timeout_cust > 3:
+        console.print("- [warning]Jalur ke Server Tujuan Normal, tapi jalur ke Pelanggan Timeout.[/warning]")
+        console.print("- Berarti ada masalah di jaringan lokal pelanggan (ODP/Kabel/Modem).")
+        console.print("- [bold yellow]Saran:[/bold yellow] Kirim teknisi untuk cek redaman/kabel.")
+    elif ip_modem and timeout_target <= 3 and timeout_cust <= 3:
+        console.print("- [success]Kedua jalur (Tujuan & Pelanggan) terlihat normal.[/success]")
+        console.print("- Jika pelanggan masih komplain, kemungkinan masalahnya di aplikasi/HP pelanggan.")
+    else:
+        console.print("- [info]Hanya melakukan trace ke Server Tujuan.[/info]")
+        if timeout_target > 3:
+            console.print("- [warning]Jalur ke Server Tujuan Timeout. Eskalasi ke NOC.[/warning]")
+        else:
+            console.print("- [success]Rute ke Server Tujuan Normal.[/success]")
+
+    # ================= FORMAT LAPORAN =================
+    if timeout_target > 3 or (ip_modem and timeout_cust > 3):
+        console.print("\n[bold yellow]📋 FORMAT LAPORAN NOC (Copy-Paste):[/bold yellow]")
+        console.print(f"Kepada Tim DSO/NOC,")
+        console.print(f"Mohon bantu cek rute ke {target}. Pelanggan dengan IP Modem {ip_modem or '(tidak diisi)'} mengalami kendala.")
+        if timeout_target > 3:
+            console.print("Terdapat indikasi packet loss / timeout pada jalur backbone menuju server target. Mohon cek BGP peering.")
+        if ip_modem and timeout_cust > 3:
+            console.print("Terdapat juga timeout pada jalur ke IP Modem pelanggan. Mohon cek kualitas jaringan lokal/ODP.")
+        console.print("Terlampir hasil traceroute dari sisi Cloud.")
+    
     pause()
 
 # ================= FITUR 5: CEK EMBASY =================
@@ -514,21 +591,19 @@ def cek_embasy():
     show_header("Cek Embasy (Gladius Scraper)")
     console.print("[bold]Masukkan data pelanggan.[/bold]")
     
-    # Validasi Nomor Internet (Harus Angka)
     while True:
         nomor = Prompt.ask("Nomor Internet (contoh: 131169107209)").strip()
         if nomor.isdigit() and len(nomor) >= 8:
             break
         console.print("[bold red]❌ Error: Nomor Internet harus berupa ANGKA dan minimal 8 digit![/bold red]")
         
-    # Validasi Domain (Gak boleh kosong)
     while True:
         domain = Prompt.ask("Domain (contoh: telkom.net)", default="telkom.net").strip()
         if domain:
             break
         console.print("[bold red]❌ Error: Domain tidak boleh kosong![/bold red]")
     
-    console.print("[cyan]Memeriksa data pelanggan, mohon tunggu...[/cyan]")
+    console.print("[cyan]Menarik data pelanggan, mohon tunggu...[/cyan]")
     
     try:
         summary_data, result = asyncio.run(run_gladius(nomor, domain))
@@ -552,12 +627,12 @@ def cek_embasy():
             table.add_row("Status Koneksi", summary_data.get("Status Koneksi", "-"))
             
             console.print("\n", table, "\n")
-            # Gambar disimpan diam-diam aja
             
-
-            
+            # Link Download
             download_url = f"https://tracker.sein.bid/download/{result}"
+            console.print(f"[success]✅ Data berhasil diambil![/success]")
             console.print(f"[bold cyan]🔗 Download Capture: [underline]{download_url}[/underline][/bold cyan]\n")
+            
             console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
             if summary_data.get("Status Koneksi") == "Interim-Update":
                 console.print("- Status Koneksi: ONLINE (Interim-Update). Modem pelanggan terhubung ke jaringan.")
