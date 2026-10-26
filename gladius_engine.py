@@ -3,6 +3,8 @@ from playwright.async_api import async_playwright
 import pyotp
 import requests
 import os
+import glob
+import time
 from dotenv import load_dotenv
 from PIL import Image
 from bs4 import BeautifulSoup
@@ -46,8 +48,34 @@ def parse_summary(html_content):
                 data["Status Koneksi"] = cols[9].get_text(strip=True)
     return data
 
+
+def cleanup_old_files():
+    """Hapus semua file gambar hasil_*.png dan file captcha lama"""
+    print("[*] Membersihkan file cache & capture lama...")
+    # Hapus hasil_*.png
+    for f in glob.glob("hasil_*.png"):
+        try:
+            os.remove(f)
+        except:
+            pass
+    # Hapus temp_full.png
+    if os.path.exists("temp_full.png"):
+        try:
+            os.remove("temp_full.png")
+        except:
+            pass
+    # Hapus captcha lama
+    captcha_dir = "/home/almaarij/sein/captcha_temp"
+    if os.path.exists(captcha_dir):
+        for f in glob.glob(f"{captcha_dir}/*.png"):
+            try:
+                os.remove(f)
+            except:
+                pass
+
 async def run_gladius(nomor_internet, domain):
     os.makedirs(SAVE_DIR, exist_ok=True)
+    cleanup_old_files()
     
     MAX_RETRIES = 3
     for attempt in range(MAX_RETRIES):
