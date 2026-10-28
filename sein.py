@@ -74,7 +74,7 @@ def menu():
         console.print("[menu](4)[/menu] ISP Pro Toolkit (ASN, Recon, Adv Ping, Trace)")
         console.print("[menu](5)[/menu] Cek Embasy (Gladius Auto-Scraper)")
         console.print("[menu](6)[/menu] Upwork Project Hunter")
-        console.print("[menu](7)[/menu] Reverse Engine Web")
+        console.print("[menu](7)[/menu] Universal Reverse Engine Web")
         console.print("[menu](8)[/menu] Exit\n")
         
         choice = Prompt.ask("[bold yellow]Pilih menu[/bold yellow]", choices=["1", "2", "3", "4", "5", "6", "7", "8"])
@@ -688,16 +688,15 @@ def cek_embasy():
         
     pause()
 
-
 # ================= FITUR 6: UPWORK HUNTER =================
 def upwork_hunter():
     show_header("Upwork Project Hunter")
-    console.print("[bold]Analisa Proyek Upwork & Estimasi Profit AI[/bold]\n")
+    console.print("[bold]Analisa Proyek Upwork & Estimasi Profit AI[/bold]\\n")
     
     import subprocess
     
     console.print("[cyan]Menjalankan Playwright (Mode Stealth + Xvfb)...[/cyan]")
-    console.print("[yellow]Browser jalan di background. Tunggu proses scrape selesai...[/yellow]\n")
+    console.print("[yellow]Browser jalan di background. Tunggu proses scrape selesai...[/yellow]\\n")
     
     try:
         # Jalanin script upwork_auto.py pake xvfb-run
@@ -709,20 +708,17 @@ def upwork_hunter():
         
     pause()
 
-
-
 # ================= FITUR 7: WEB TRAFFIC INTERCEPTOR =================
 def sniffer_menu():
     show_header("Universal Reverse Engine Web")
-    console.print("[bold]Membedah API di balik layar website (Pake AI Vision).[/bold]\n")
+    console.print("[bold]Membedah API & Navigasi Web Universal.[/bold]\\n")
     
     import subprocess
-    console.print("[cyan]Menjalankan Playwright + AI (Virtual Display)...[/cyan]")
-    console.print("[yellow]Browser jalan di background. Ikuti instruksi di layar.\n[/yellow]")
+    console.print("[cyan]Menjalankan Playwright (Virtual Display)...[/cyan]")
+    console.print("[yellow]Browser jalan di background. Ikuti instruksi di layar.\\n[/yellow]")
     
     try:
-        # Jalanin script upwork_auto.py pake xvfb-run
-        subprocess.run(["xvfb-run", "-a", "python3", "universal_sniffer.py"], check=True)
+        subprocess.run(["xvfb-run", "-a", "python3", "universal_sniffer_v3.py"], check=True)
     except Exception as e:
         console.print(f"[danger]❌ Gagal: {e}[/danger]")
         

@@ -64,3 +64,18 @@ gladius_session.json
 cookies.json
 chrome_profile/
 captcha_temp/
+
+# Hasil Scraping & Debug
+Amel/
+api_capture.txt
+Upwork_Analysis.csv
+cek_tombol.py
+debug_upwork.py
+dump_win.py
+dump_upwork_auto.py
+jebak_bandung.py
+klik_angka.py
+scrape_*.py
+test_*.py
+sniffer_module_backup.py
+universal_sniffer_backup.py
