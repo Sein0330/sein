@@ -46,3 +46,21 @@ state.json
 users.txt
 gladius_session.json
 keepalive.py
+
+# Hasil Scraping & Gambar
+*.png
+*.jpg
+*.jpeg
+current_page.png
+input_field.png
+confirm_page.png
+final_page.png
+post_login.png
+api_capture.txt
+Upwork_Analysis.csv
+
+# Session & Cache
+gladius_session.json
+cookies.json
+chrome_profile/
+captcha_temp/
