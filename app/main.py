@@ -56,6 +56,23 @@ async def about(auth_type: str = Depends(verify_api_key)):
     }
 
 # ================= ENDPOINT DOWNLOAD FILE =================
+
+@app.get("/download/upwork/{filename}")
+async def download_upwork(filename: str):
+    # Path folder tempat nyimpen hasil scraping upwork
+    file_path = f"/home/almaarij/sein/{filename}"
+    
+    if ".." in filename or "/" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+        
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+        
+    # Media type buat excel/csv
+    media_type = "text/csv" if filename.endswith(".csv") else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    
+    return FileResponse(path=file_path, filename=filename, media_type=media_type)
+
 @app.get("/download/{filename}")
 async def download_file(filename: str):
     # Path folder tempat nyimpen hasil capture

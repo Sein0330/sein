@@ -15,6 +15,8 @@ from rich.prompt import Prompt
 from rich.table import Table
 from rich.theme import Theme
 from gladius_engine import run_gladius
+from sniffer_module import run_sniffer
+from upwork_parser import process_upwork_html
 
 # Setup tema warna
 custom_theme = Theme({
@@ -71,16 +73,20 @@ def menu():
         console.print("[menu](3)[/menu] Multi-Path Analyzer (Diagnosa Game RTO)")
         console.print("[menu](4)[/menu] ISP Pro Toolkit (ASN, Recon, Adv Ping, Trace)")
         console.print("[menu](5)[/menu] Cek Embasy (Gladius Auto-Scraper)")
-        console.print("[menu](6)[/menu] Exit\n")
+        console.print("[menu](6)[/menu] Upwork Project Hunter")
+        console.print("[menu](7)[/menu] Reverse Engine Web")
+        console.print("[menu](8)[/menu] Exit\n")
         
-        choice = Prompt.ask("[bold yellow]Pilih menu[/bold yellow]", choices=["1", "2", "3", "4", "5", "6"])
+        choice = Prompt.ask("[bold yellow]Pilih menu[/bold yellow]", choices=["1", "2", "3", "4", "5", "6", "7", "8"])
         
         if choice == "1": track_ip()
         elif choice == "2": network_menu()
         elif choice == "3": path_analyzer()
         elif choice == "4": isp_pro_menu()
         elif choice == "5": cek_embasy()
-        elif choice == "6":
+        elif choice == "6": upwork_hunter()
+        elif choice == "7": sniffer_menu()
+        elif choice == "8":
             console.print("[info]Keluar dari SEIN. Sampai jumpa![/info]")
             sys.exit(0)
 
@@ -679,6 +685,46 @@ def cek_embasy():
             
     except Exception as e:
         console.print(f"[danger]❌ Error sistem: {e}[/danger]")
+        
+    pause()
+
+
+# ================= FITUR 6: UPWORK HUNTER =================
+def upwork_hunter():
+    show_header("Upwork Project Hunter")
+    console.print("[bold]Analisa Proyek Upwork & Estimasi Profit AI[/bold]\n")
+    
+    import subprocess
+    
+    console.print("[cyan]Menjalankan Playwright (Mode Stealth + Xvfb)...[/cyan]")
+    console.print("[yellow]Browser jalan di background. Tunggu proses scrape selesai...[/yellow]\n")
+    
+    try:
+        # Jalanin script upwork_auto.py pake xvfb-run
+        subprocess.run(["xvfb-run", "-a", "python3", "upwork_auto.py"], check=True)
+    except subprocess.CalledProcessError as e:
+        console.print(f"[danger]❌ Script error (Exit Code: {e.returncode})[/danger]")
+    except Exception as e:
+        console.print(f"[danger]❌ Gagal: {e}[/danger]")
+        
+    pause()
+
+
+
+# ================= FITUR 7: WEB TRAFFIC INTERCEPTOR =================
+def sniffer_menu():
+    show_header("Universal Reverse Engine Web")
+    console.print("[bold]Membedah API di balik layar website (Pake AI Vision).[/bold]\n")
+    
+    import subprocess
+    console.print("[cyan]Menjalankan Playwright + AI (Virtual Display)...[/cyan]")
+    console.print("[yellow]Browser jalan di background. Ikuti instruksi di layar.\n[/yellow]")
+    
+    try:
+        # Jalanin script upwork_auto.py pake xvfb-run
+        subprocess.run(["xvfb-run", "-a", "python3", "universal_sniffer.py"], check=True)
+    except Exception as e:
+        console.print(f"[danger]❌ Gagal: {e}[/danger]")
         
     pause()
 

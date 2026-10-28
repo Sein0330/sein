@@ -1,0 +1,3 @@
+[GET] https://lensa-inventory.telkomakses.co.id/resevation_list_data?page=1&perpage=10&search=&orderBy=reservation_id&orderDirection=asc | Status: 200
+[GET] https://lensa-inventory.telkomakses.co.id/pagination_data | Status: 200
+[GET] https://lensa-inventory.telkomakses.co.id/approval_list_data?page=1&perpage=10&search=&orderBy=reservation_id&orderDirection=asc | Status: 200
