@@ -67,7 +67,7 @@ Membedah API di balik layar website.
 ### Akses via Web Terminal (Mudah)
 1. Buka browser (PC/HP).
 2. Akses ke: `https://tools.sein.bid`
-3. Masukkan kredensial login (Basic Auth: admin / sein2026).
+3. Masukkan kredensial login (Basic Auth) yang telah dikonfigurasi pada file sistem.
 4. Terminal siap digunakan.
 
 ### Akses via CLI (Lokal Server)
