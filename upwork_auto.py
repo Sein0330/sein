@@ -48,7 +48,9 @@ async def analyze_with_ai(title, description):
         "action": "Step-by-step technical approach (libraries, APIs, architecture).",
         "result": "Expected business outcome for the client.",
         "estimated_cost_usd": 1.50,
-        "reasoning": "Why this cost?"
+        "reasoning": "Why this cost?",
+        "conclusion": "Apakah proyek ini bisa dikerjakan oleh freelancer yang dibantu AI (bukan full auto-code)? Jelaskan bagian tersulitnya.",
+        "ai_prompt": "Buatkan prompt super detail yang bisa di-copy-paste ke Claude/GPT untuk men-generate struktur kode/scaffolding proyek ini."
     }}
     
     Project Title: {title}
@@ -172,6 +174,9 @@ async def main():
             console.print(f"[bold cyan]Task:[/bold cyan] {ai_result.get('task')}")
             console.print(f"[bold cyan]Action:[/bold cyan] {ai_result.get('action')}")
             console.print(f"[bold cyan]Result:[/bold cyan] {ai_result.get('result')}")
+            console.print("="*60)
+            console.print(f"[bold green]KESIMPULAN (Feasibility):[/bold green]\n{ai_result.get('conclusion')}\n")
+            console.print(f"[bold magenta]PROMPT UNTUK DEPLOY (Copy-Paste ke Claude/GPT):[/bold magenta]\n{ai_result.get('ai_prompt')}")
             console.print("="*60 + "\n")
             
             # Simpen ke CSV
@@ -182,7 +187,9 @@ async def main():
                 "Situation": ai_result.get('situation'),
                 "Task": ai_result.get('task'),
                 "Action": ai_result.get('action'),
-                "Result": ai_result.get('result')
+                "Result": ai_result.get('result'),
+                "Conclusion": ai_result.get('conclusion'),
+                "AI_Prompt": ai_result.get('ai_prompt')
             }])
             df.to_csv("Upwork_Deep_Analysis.csv", index=False)
             console.print("[green]✅ Saved to Upwork_Deep_Analysis.csv[/green]")
