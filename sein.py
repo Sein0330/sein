@@ -18,7 +18,7 @@ from gladius_engine import run_gladius
 from sniffer_module import run_sniffer
 from upwork_parser import process_upwork_html
 
-# Setup tema warna
+# Setup color theme
 custom_theme = Theme({
     "info": "cyan",
     "success": "bold green",
@@ -31,7 +31,7 @@ custom_theme = Theme({
 console = Console(theme=custom_theme)
 
 def pause():
-    Prompt.ask("\n[dim]Tekan ENTER untuk kembali[/dim]")
+    Prompt.ask("\n[dim]Press ENTER to return[/dim]")
     os.system('cls' if os.name == 'nt' else 'clear')
 
 # Load API Key
@@ -60,49 +60,53 @@ def show_logo():
    ╚══════╝╚══════╝╚═╝╚═╝  ╚═══╝
 [/bold cyan]
 [bold white]   Systematic Exploration - Internet Network[/bold white]
-[dim]   "Support tools untuk analisa & evaluasi kualitas layanan pelanggan | By 96250009"[/dim]
+[dim]   "Support tools for analyzing & evaluating customer service quality | By 96250009"[/dim]
     """
     console.print(logo)
 
-# ================= MENU UTAMA =================
+# ================= MAIN MENU =================
 def menu():
     while True:
         show_logo()
         console.print("[menu](1)[/menu] IP Track & Locate (MaxMind)")
         console.print("[menu](2)[/menu] Network Tools (WHOIS, DNS, Port, Header)")
-        console.print("[menu](3)[/menu] Multi-Path Analyzer (Diagnosa Game RTO)")
+        console.print("[menu](3)[/menu] Multi-Path Analyzer (Game RTO Diagnosis)")
         console.print("[menu](4)[/menu] ISP Pro Toolkit (ASN, Recon, Adv Ping, Trace)")
-        console.print("[menu](5)[/menu] Cek Embasy (Gladius Auto-Scraper)")
-        console.print("[menu](6)[/menu] Upwork Project Hunter")
-        console.print("[menu](7)[/menu] Universal Reverse Engine Web")
-        console.print("[menu](8)[/menu] Exit\n")
+        console.print("[menu](5)[/menu] Check Embasy (Gladius Auto-Scraper)")
+        console.print("[menu](6)[/menu] Universal Reverse Engine Web")
+        console.print("[menu](7)[/menu] Exit\n")
         
-        choice = Prompt.ask("[bold yellow]Pilih menu[/bold yellow]", choices=["1", "2", "3", "4", "5", "6", "7", "8"])
+        choice = Prompt.ask("[bold yellow]Select menu[/bold yellow]")
         
         if choice == "1": track_ip()
         elif choice == "2": network_menu()
         elif choice == "3": path_analyzer()
         elif choice == "4": isp_pro_menu()
         elif choice == "5": cek_embasy()
-        elif choice == "6": upwork_hunter()
-        elif choice == "7": sniffer_menu()
-        elif choice == "8":
-            console.print("[info]Keluar dari SEIN. Sampai jumpa![/info]")
+        elif choice == "6": sniffer_menu()
+        elif choice == "7":
+            console.print("[info]Exiting SEIN. Goodbye![/info]")
             sys.exit(0)
+        elif choice.upper() == "HOOK": # Secret Code
+            console.print("[bold magenta]🔓 Secret Menu Unlocked![/bold magenta]")
+            upwork_hunter()
+        else:
+            console.print("[danger]❌ Menu not found![/danger]")
+            time.sleep(1)
 
-# ================= FITUR 1: IP TRACK =================
+# ================= FEATURE 1: IP TRACK =================
 def track_ip():
     show_header("IP Track & Locate")
-    console.print("[bold]Masukkan IP Address untuk dilacak.[/bold]")
+    console.print("[bold]Enter IP Address to track.[/bold]")
     ip_address = Prompt.ask("Submit IP Address")
     if not ip_address: return
 
-    with console.status("[bold green]Melacak IP...[/bold green]"):
+    with console.status("[bold green]Tracking IP...[/bold green]"):
         try:
             res = requests.get(f"{BASE_URL}/track/{ip_address}", headers={"X-API-Key": API_KEY}, timeout=10)
             if res.status_code == 200:
                 data = res.json().get("data", {})
-                table = Table(title=f"Hasil Pelacakan: {ip_address}", show_header=True, header_style="bold magenta")
+                table = Table(title=f"Tracking Result: {ip_address}", show_header=True, header_style="bold magenta")
                 table.add_column("Field", style="cyan")
                 table.add_column("Value", style="green")
                 table.add_row("IP Address", str(data.get('ip')))
@@ -114,32 +118,32 @@ def track_ip():
                 table.add_row("Timezone", str(data.get('timezone') or "Unknown"))
                 console.print("\n", table, "\n")
                 
-                console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
+                console.print("[analisis]💡 ANALYSIS & RECOMMENDATION:[/analisis]")
                 if data.get('country') == "Indonesia":
-                    console.print("- IP ini terdaftar di Indonesia.")
-                    console.print("- Jika IP ini milik pelanggan ISP, akurasi lokasi hanya sampai level Kota/Kabupaten (bukan titik rumah).")
+                    console.print("- This IP is registered in Indonesia.")
+                    console.print("- If this is a customer IP, accuracy is only up to City/Regency level (not exact home address).")
                 else:
-                    console.print("- IP ini terdaftar di luar Indonesia (atau routing internasional).")
-                    console.print("- Kemungkinan pelanggan menggunakan VPN, atau IP server game berada di luar negeri.")
+                    console.print("- This IP is registered outside Indonesia (or using international routing).")
+                    console.print("- The customer might be using a VPN, or the game server is located abroad.")
             elif res.status_code == 404:
-                console.print("[warning]Gagal: IP tidak ditemukan di database.[/warning]")
+                console.print("[warning]Failed: IP not found in database.[/warning]")
             else:
                 console.print(f"[danger]Error {res.status_code}: {res.text}[/danger]")
         except Exception as e:
             console.print(f"[danger]Error: {e}[/danger]")
     pause()
 
-# ================= FITUR 2: NETWORK TOOLS =================
+# ================= FEATURE 2: NETWORK TOOLS =================
 def network_menu():
     while True:
         show_header("Network Tools")
         console.print("[menu](1)[/menu] WHOIS Lookup")
         console.print("[menu](2)[/menu] DNS Record Checker")
-        console.print("[menu](3)[/menu] Port Scanner (20 Port Umum)")
+        console.print("[menu](3)[/menu] Port Scanner (20 Common Ports)")
         console.print("[menu](4)[/menu] HTTP Header Inspector")
-        console.print("[menu](5)[/menu] Kembali ke Menu Utama\n")
+        console.print("[menu](5)[/menu] Back to Main Menu\n")
         
-        choice = Prompt.ask("[bold yellow]Pilih tool[/bold yellow]", choices=["1", "2", "3", "4", "5"])
+        choice = Prompt.ask("[bold yellow]Select tool[/bold yellow]", choices=["1", "2", "3", "4", "5"])
         
         if choice == "1": whois_lookup()
         elif choice == "2": dns_checker()
@@ -149,9 +153,9 @@ def network_menu():
 
 def whois_lookup():
     show_header("Network Tools > WHOIS Lookup")
-    target = Prompt.ask("Masukkan IP atau Domain (contoh: 8.8.8.8 / google.com)")
+    target = Prompt.ask("Enter IP or Domain (e.g., 8.8.8.8 / google.com)")
     if not target: return
-    with console.status("[bold green]Menarik data WHOIS...[/bold green]"):
+    with console.status("[bold green]Fetching WHOIS data...[/bold green]"):
         try:
             w = whois.whois(target)
             table = Table(title=f"WHOIS Result: {target}", show_header=True, header_style="bold magenta")
@@ -163,26 +167,26 @@ def whois_lookup():
             table.add_row("Country", str(w.country))
             console.print("\n", table, "\n")
             
-            console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
+            console.print("[analisis]💡 ANALYSIS & RECOMMENDATION:[/analisis]")
             if w.org:
-                console.print(f"- Target ini terdaftar atas nama: {w.org} ({w.country}).")
-                console.print("- Gunakan info ini untuk validasi apakah target resmi atau mencurigakan.")
+                console.print(f"- This target is registered under: {w.org} ({w.country}).")
+                console.print("- Use this info to validate if the target is legitimate or suspicious.")
             else:
-                console.print("- Info organisasi tidak tersedia. Domain mungkin disembunyikan (private WHOIS).")
+                console.print("- Organization info not available. Domain might be private (WHOIS privacy).")
         except Exception as e:
-            console.print(f"[danger]Gagal WHOIS: {e}[/danger]")
+            console.print(f"[danger]WHOIS failed: {e}[/danger]")
     pause()
 
 def dns_checker():
     show_header("Network Tools > DNS Record Checker")
-    domain = Prompt.ask("Masukkan Domain (contoh: google.com)")
+    domain = Prompt.ask("Enter Domain (e.g., google.com)")
     if not domain: return
     table = Table(title=f"DNS Records: {domain}", show_header=True, header_style="bold magenta")
     table.add_column("Type", style="cyan")
     table.add_column("Value", style="green")
     
     has_a_record = False
-    with console.status("[bold green]Mengecek DNS...[/bold green]"):
+    with console.status("[bold green]Checking DNS...[/bold green]"):
         for rtype in ["A", "MX", "TXT", "CNAME"]:
             try:
                 answers = dns.resolver.resolve(domain, rtype)
@@ -193,17 +197,17 @@ def dns_checker():
                 pass
     console.print("\n", table, "\n")
     
-    console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
+    console.print("[analisis]💡 ANALYSIS & RECOMMENDATION:[/analisis]")
     if not has_a_record:
-        console.print("- [warning]Tidak ada A Record ditemukan.[/warning] Domain mungkin tidak aktif atau pakai IP dedicated.")
+        console.print("- [warning]No A Record found.[/warning] Domain might be inactive or using dedicated IP.")
     else:
-        console.print("- Domain aktif (punya A Record).")
-        console.print("- Jika ada MX Record, berarti domain ini terhubung ke layanan email.")
+        console.print("- Domain is active (has A Record).")
+        console.print("- If MX Record exists, this domain is connected to an email service.")
     pause()
 
 def port_scanner():
     show_header("Network Tools > Port Scanner")
-    target = Prompt.ask("Masukkan IP/Host (contoh: scanme.nmap.org)")
+    target = Prompt.ask("Enter IP/Host (e.g., scanme.nmap.org)")
     if not target: return
     
     common_ports = {21: "FTP", 22: "SSH", 80: "HTTP", 443: "HTTPS", 3306: "MySQL", 3389: "RDP", 8080: "HTTP-Proxy"}
@@ -226,25 +230,25 @@ def port_scanner():
             sock.close()
     
     console.print("\n", table, "\n")
-    console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
+    console.print("[analisis]💡 ANALYSIS & RECOMMENDATION:[/analisis]")
     if not open_ports:
-        console.print("- Semua port yang di-scan tertutup (CLOSED). Server aman dari akses luar yang tidak perlu.")
+        console.print("- All scanned ports are closed. Server is safe from unnecessary external access.")
     else:
-        console.print(f"- Ditemukan {len(open_ports)} port terbuka.")
+        console.print(f"- Found {len(open_ports)} open ports.")
         for p, s in open_ports:
             if p in [21, 23, 3306]:
-                console.print(f"- [danger]PERINGATAN: Port {p} ({s}) terbuka! Ini berisiko tinggi.[/danger]")
+                console.print(f"- [danger]WARNING: Port {p} ({s}) is open! This is high risk.[/danger]")
             elif p == 3389:
-                console.print(f"- [warning]Port 3389 (RDP) terbuka. Pastikan pakai VPN/Whitelist IP.[/warning]")
+                console.print(f"- [warning]Port 3389 (RDP) is open. Ensure you use VPN/IP Whitelist.[/warning]")
             else:
-                console.print(f"- Port {p} ({s}) terbuka. Pastikan ini port yang memang dibutuhkan.")
+                console.print(f"- Port {p} ({s}) is open. Make sure this port is required.")
     pause()
 
 def http_inspector():
     show_header("Network Tools > HTTP Header Inspector")
-    url = Prompt.ask("Masukkan URL (contoh: https://google.com)")
+    url = Prompt.ask("Enter URL (e.g., https://google.com)")
     if not url.startswith("http"): url = "https://" + url
-    with console.status("[bold green]Mengambil HTTP Headers...[/bold green]"):
+    with console.status("[bold green]Fetching HTTP Headers...[/bold green]"):
         try:
             res = requests.get(url, timeout=5)
             table = Table(title=f"HTTP Inspector: {url}", show_header=True, header_style="bold magenta")
@@ -255,21 +259,21 @@ def http_inspector():
                 table.add_row(key, value)
             console.print("\n", table, "\n")
             
-            console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
+            console.print("[analisis]💡 ANALYSIS & RECOMMENDATION:[/analisis]")
             if res.status_code == 200:
-                console.print("- Website merespon dengan baik (200 OK).")
+                console.print("- Website responded well (200 OK).")
             elif res.status_code in [301, 302]:
-                console.print("- Website melakukan redirect.")
+                console.print("- Website performs a redirect.")
             else:
-                console.print(f"- Status code {res.status_code}. Cek apakah web sedang down atau butuh auth.")
+                console.print(f"- Status code {res.status_code}. Check if the web is down or requires auth.")
             
             if "strict-transport-security" not in res.headers:
-                console.print("- [warning]HSTS tidak aktif. Disarankan mengaktifkan HSTS untuk keamanan HTTPS.[/warning]")
+                console.print("- [warning]HSTS is inactive. It is recommended to enable HSTS for HTTPS security.[/warning]")
         except Exception as e:
-            console.print(f"[danger]Gagal ambil header: {e}[/danger]")
+            console.print(f"[danger]Failed to fetch headers: {e}[/danger]")
     pause()
 
-# ================= FITUR 3: PATH ANALYZER =================
+# ================= FEATURE 3: PATH ANALYZER =================
 def run_globalping_trace(target, location="ID"):
     url = "https://api.globalping.io/v1/measurements"
     payload = {"type": "traceroute", "target": target, "locations": [{"country": location}]}
@@ -310,19 +314,19 @@ def extract_hops(result):
 
 def path_analyzer():
     show_header("Multi-Path Analyzer")
-    console.print("[bold]Perbandingan Latency Global (ID / SG / US)[/bold]\n")
-    ip_cust = Prompt.ask("[cyan]1. IP Pelanggan[/cyan]")
-    ip_game = Prompt.ask("[cyan]2. IP/Domain Game[/cyan]")
+    console.print("[bold]Global Latency Comparison (ID / SG / US)[/bold]\n")
+    ip_cust = Prompt.ask("[cyan]1. Customer IP[/cyan]")
+    ip_game = Prompt.ask("[cyan]2. Game IP/Domain[/cyan]")
     
     locations = {"ID": "Indonesia", "SG": "Singapore", "US": "United States"}
     results = {}
     
     for loc_code in locations.keys():
-        with console.status(f"[bold green]Menarik data Traceroute dari {loc_code}...[/bold green]"):
+        with console.status(f"[bold green]Fetching Traceroute data from {loc_code}...[/bold green]"):
             res = run_globalping_trace(ip_game, loc_code)
             results[loc_code] = extract_hops(res)
             
-    table = Table(title=f"Perbandingan Rute Global ke Game ({ip_game})", show_header=True, header_style="bold magenta", expand=True)
+    table = Table(title=f"Global Route Comparison to Game ({ip_game})", show_header=True, header_style="bold magenta", expand=True)
     table.add_column("Hop", style="cyan", justify="right")
     table.add_column("IP Address (ID)", style="green", width=15)
     table.add_column("Lat ID", style="yellow", justify="right")
@@ -342,15 +346,15 @@ def path_analyzer():
         table.add_row(*row)
 
     console.print("\n", table, "\n")
-    console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
-    console.print("[success]✅ Rute ke Server Game (dari 3 titik global) TIDAK menunjukkan Packet Loss berat di hop awal.[/success]")
-    console.print("  Timeout panjang yang tidak ditampilkan biasanya terjadi di hop akhir karena Server Game memblokir ICMP (Anti-DDoS).")
-    console.print("\n[bold green]📝 REKOMENDASI UNTUK CS/TEKNISI:[/bold green]")
-    console.print("1. Sampaikan ke pelanggan bahwa rute jaringan dari ISP ke Server Game terpantau **NORMAL**.")
-    console.print("2. RTO/Lag murni karena kebijakan Server Game atau masalah di sisi Game, **BUKAN** dari jaringan ISP.")
+    console.print("[analisis]💡 ANALYSIS & RECOMMENDATION:[/analisis]")
+    console.print("[success]✅ The route to Game Server (from 3 global locations) does NOT show significant Packet Loss at the initial hops.[/success]")
+    console.print("  Long timeouts not displayed usually occur at the final hop because Game Server blocks ICMP (Anti-DDoS).")
+    console.print("\n[bold green]📝 RECOMMENDATION FOR CS/TECHNICIAN:[/bold green]")
+    console.print("1. Inform the customer that the network route from ISP to Game Server is **NORMAL**.")
+    console.print("2. RTO/Lag is purely due to Game Server policy or issues on the Game side, **NOT** from the ISP network.")
     pause()
 
-# ================= FITUR 4: ISP PRO TOOLKIT =================
+# ================= FEATURE 4: ISP PRO TOOLKIT =================
 def isp_pro_menu():
     while True:
         show_header("ISP Pro Toolkit")
@@ -358,9 +362,9 @@ def isp_pro_menu():
         console.print("[menu](2)[/menu] Subdomain & Reverse DNS Recon")
         console.print("[menu](3)[/menu] Advanced Ping Checker (Loss, Jitter, RTT)")
         console.print("[menu](4)[/menu] Traceroute (NOC Escalation)")
-        console.print("[menu](5)[/menu] Kembali ke Menu Utama\n")
+        console.print("[menu](5)[/menu] Back to Main Menu\n")
         
-        choice = Prompt.ask("[bold yellow]Pilih tool[/bold yellow]", choices=["1", "2", "3", "4", "5"])
+        choice = Prompt.ask("[bold yellow]Select tool[/bold yellow]", choices=["1", "2", "3", "4", "5"])
         
         if choice == "1": asn_lookup()
         elif choice == "2": subdomain_recon()
@@ -370,27 +374,27 @@ def isp_pro_menu():
 
 def asn_lookup():
     show_header("ISP Pro Toolkit > BGP / ASN Lookup")
-    target = Prompt.ask("Masukkan IP atau Domain (contoh: 8.8.8.8 / google.com)")
+    target = Prompt.ask("Enter IP or Domain (e.g., 8.8.8.8 / google.com)")
     if not target: return
-    console.print(f"[cyan]Menarik info ASN untuk {target}...[/cyan]")
+    console.print(f"[cyan]Fetching ASN info for {target}...[/cyan]")
     try:
         result = subprocess.run(["whois", "-h", "whois.cymru.com", f" -v {target}"], capture_output=True, text=True, timeout=10)
         if result.returncode == 0:
             console.print(result.stdout)
-            console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
-            console.print("- Data ASN menunjukkan siapa pemilik IP (Provider/Perusahaan).")
-            console.print("- Jika ini IP internal ISP kita, pastikan tidak ada konflik routing BGP.")
+            console.print("[analisis]💡 ANALYSIS & RECOMMENDATION:[/analisis]")
+            console.print("- ASN data shows who owns the IP (Provider/Company).")
+            console.print("- If this is our internal ISP IP, ensure there are no BGP routing conflicts.")
         else:
-            console.print("[warning]Gagal narik data ASN. Coba lagi.[/warning]")
+            console.print("[warning]Failed to fetch ASN data. Try again.[/warning]")
     except Exception as e:
         console.print(f"[danger]Error: {e}[/danger]")
     pause()
 
 def subdomain_recon():
     show_header("ISP Pro Toolkit > Subdomain & Reverse DNS")
-    domain = Prompt.ask("Masukkan Domain (contoh: example.com)")
+    domain = Prompt.ask("Enter Domain (e.g., example.com)")
     if not domain: return
-    console.print(f"[cyan]Mencari subdomain untuk {domain}...[/cyan]")
+    console.print(f"[cyan]Searching subdomains for {domain}...[/cyan]")
     try:
         url = f"https://crt.sh/?q=%25.{domain}&output=json"
         res = requests.get(url, timeout=15)
@@ -404,7 +408,7 @@ def subdomain_recon():
                         subdomains.add(sub)
             
             if subdomains:
-                table = Table(title=f"Subdomain Ditemukan: {len(subdomains)}", show_header=True, header_style="bold magenta")
+                table = Table(title=f"Subdomains Found: {len(subdomains)}", show_header=True, header_style="bold magenta")
                 table.add_column("Subdomain", style="cyan")
                 table.add_column("IP Address", style="green")
                 table.add_column("Reverse DNS", style="yellow")
@@ -420,26 +424,26 @@ def subdomain_recon():
                     except:
                         table.add_row(sub, "-", "-")
                 console.print("\n", table, "\n")
-                console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
-                console.print("- Subdomain yang terekspos bisa jadi celah keamanan jika tidak di-update.")
-                console.print("- Gunakan info ini untuk audit domain kantor.")
+                console.print("[analisis]💡 ANALYSIS & RECOMMENDATION:[/analisis]")
+                console.print("- Exposed subdomains can be a security vulnerability if not updated.")
+                console.print("- Use this info for office domain audits.")
             else:
-                console.print("[warning]Gak ada subdomain ditemukan.[/warning]")
+                console.print("[warning]No subdomains found.[/warning]")
         else:
-            console.print("[warning]Gagal narik data dari crt.sh.[/warning]")
+            console.print("[warning]Failed to fetch data from crt.sh.[/warning]")
     except Exception as e:
         console.print(f"[danger]Error: {e}[/danger]")
     pause()
 
 def advanced_ping():
     show_header("ISP Pro Toolkit > Advanced Ping Checker")
-    target = Prompt.ask("Masukkan IP/Host (contoh: 8.8.8.8)")
+    target = Prompt.ask("Enter IP/Host (e.g., 8.8.8.8)")
     if not target: return
     
     param = '-n' if platform.system().lower() == 'windows' else '-c'
     count = '20'
     
-    console.print(f"[cyan]Ping ke {target} (20 paket)...[/cyan]")
+    console.print(f"[cyan]Pinging {target} (20 packets)...[/cyan]")
     try:
         cmd = ['ping', param, count, target]
         process = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30)
@@ -458,64 +462,64 @@ def advanced_ping():
             min_rtt = avg_rtt = max_rtt = jitter = 0.0
         
         table = Table(title=f"Advanced Ping: {target}", show_header=True, header_style="bold magenta")
-        table.add_column("Metrik", style="cyan")
-        table.add_column("Nilai", style="green")
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="green")
         table.add_column("Status", style="yellow")
         
         loss_status = "[bold green]Normal[/bold green]" if loss == 0 else "[bold red]Packet Loss![/bold red]"
         table.add_row("Packet Loss", f"{loss}%", loss_status)
         
         if loss == 100:
-            table.add_row("Avg RTT", "N/A", "[bold red]Mati[/bold red]")
-            table.add_row("Jitter", "N/A", "[bold red]Mati[/bold red]")
+            table.add_row("Avg RTT", "N/A", "[bold red]Dead[/bold red]")
+            table.add_row("Jitter", "N/A", "[bold red]Dead[/bold red]")
         else:
-            lat_status = "[bold green]Bagus[/bold green]" if avg_rtt < 50 else ("[yellow]Cukup[/yellow]" if avg_rtt < 100 else "[bold red]Tinggi[/bold red]")
+            lat_status = "[bold green]Good[/bold green]" if avg_rtt < 50 else ("[yellow]Fair[/yellow]" if avg_rtt < 100 else "[bold red]High[/bold red]")
             table.add_row("Avg RTT", f"{avg_rtt:.2f} ms", lat_status)
             
-            jitter_status = "[bold green]Stabil[/bold green]" if jitter < 10 else "[bold red]Tidak Stabil[/bold red]"
+            jitter_status = "[bold green]Stable[/bold green]" if jitter < 10 else "[bold red]Unstable[/bold red]"
             table.add_row("Jitter", f"{jitter:.2f} ms", jitter_status)
         
         console.print("\n", table, "\n")
         
-        console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
+        console.print("[analisis]💡 ANALYSIS & RECOMMENDATION:[/analisis]")
         if loss == 100:
-            console.print("- [danger]Target tidak merespon ping (100% Loss).[/danger]")
-            console.print("- Kemungkinan: IP Private/NAT (seperti Telkomsel), Firewall diblokir, atau server down.")
+            console.print("- [danger]Target is not responding to ping (100% Loss).[/danger]")
+            console.print("- Possibility: Private/NAT IP (like Telkomsel), Firewall blocked, or server down.")
         elif loss > 0:
-            console.print(f"- [warning]Terjadi Packet Loss sebesar {loss}%.[/warning]")
-            console.print("- Koneksi tidak stabil. Cek kualitas kabel LAN, WiFi, atau redaman optik.")
+            console.print(f"- [warning]Packet Loss of {loss}% occurred.[/warning]")
+            console.print("- Unstable connection. Check LAN cable quality, WiFi, or optical attenuation.")
         elif jitter > 10:
-            console.print("- [warning]Jitter tinggi (koneksi naik-turun).[/warning]")
-            console.print("- Sering terjadi saat ada download besar (Bufferbloat).")
+            console.print("- [warning]High Jitter (unstable connection).[/warning]")
+            console.print("- Often occurs during large downloads (Bufferbloat).")
         else:
-            console.print("- [success]Koneksi stabil dan sehat.[/success]")
+            console.print("- [success]Connection is stable and healthy.[/success]")
             
     except Exception as e:
-        console.print(f"[danger]Error saat ping: {e}[/danger]")
+        console.print(f"[danger]Error during ping: {e}[/danger]")
     pause()
 
 def local_traceroute():
     show_header("ISP Pro Toolkit > Traceroute (NOC Escalation)")
-    console.print("[bold]Diagnosa Rute & Eskalasi ke DSO/NOC (Manual Dual-Trace)[/bold]\n")
+    console.print("[bold]Route Diagnosis & Escalation to DSO/NOC (Manual Dual-Trace)[/bold]\n")
     
-    target = Prompt.ask("Masukkan Domain/IP Server Tujuan (contoh: shopee.co.id / 8.8.8.8)")
+    target = Prompt.ask("Enter Target Domain/IP (e.g., shopee.co.id / 8.8.8.8)")
     if not target: return
     
-    console.print("Masukan IP Modem pelanggan (bisa dicek dari https://whatismyipaddress.com/ *pastikan Device sudah terkoneksi ke Wifi Pelanggan)")
-    ip_modem = Prompt.ask("IP Modem Pelanggan (Framed IP)", default="").strip()
+    console.print("Enter customer Modem IP (can be checked from https://whatismyipaddress.com/ *ensure Device is connected to Customer WiFi)")
+    ip_modem = Prompt.ask("Customer Modem IP (Framed IP)", default="").strip()
     
-    # ================= TRACE 1: KE SERVER TUJUAN =================
-    console.print(f"\n[cyan]Menarik data Traceroute dari Cloud (Indonesia) ke {target}...[/cyan]")
+    # ================= TRACE 1: TO TARGET SERVER =================
+    console.print(f"\n[cyan]Fetching Traceroute data from Cloud (Indonesia) to {target}...[/cyan]")
     res_target = run_globalping_trace(target, "ID")
     
     if "error" in res_target:
-        console.print(f"[danger]Gagal trace ke {target}: {res_target['error']}[/danger]")
+        console.print(f"[danger]Failed to trace to {target}: {res_target['error']}[/danger]")
         pause()
         return
         
     hops_target = extract_hops(res_target)
     
-    table = Table(title=f"Traceroute Cloud ke Server Tujuan ({target})", show_header=True, header_style="bold magenta")
+    table = Table(title=f"Cloud Traceroute to Target Server ({target})", show_header=True, header_style="bold magenta")
     table.add_column("Hop", style="cyan", justify="right")
     table.add_column("IP Address", style="green")
     table.add_column("Latency", style="yellow")
@@ -534,23 +538,23 @@ def local_traceroute():
             
     console.print("\n", table, "\n")
 
-    # ================= TRACE 2: KE MODEM PELANGGAN =================
+    # ================= TRACE 2: TO CUSTOMER MODEM =================
     timeout_cust = 0
     max_lat_cust = 0
     if ip_modem:
         if ip_modem.startswith(("10.", "192.168.", "172.")):
-            console.print(f"[warning]⚠️ IP Modem ({ip_modem}) terdeteksi sebagai IP Private/NAT.[/warning]")
-            console.print("[warning]Traceroute Cloud ke Modem di-skip (Globalping butuh IP Publik).[/warning]")
+            console.print(f"[warning]⚠️ Modem IP ({ip_modem}) detected as Private/NAT IP.[/warning]")
+            console.print("[warning]Cloud Traceroute to Modem is skipped (Globalping requires Public IP).[/warning]")
             ip_modem = "" 
         else:
-            console.print(f"[cyan]Menarik data Traceroute dari Cloud (Indonesia) ke Modem Pelanggan ({ip_modem})...[/cyan]")
+            console.print(f"[cyan]Fetching Traceroute data from Cloud (Indonesia) to Customer Modem ({ip_modem})...[/cyan]")
             res_cust = run_globalping_trace(ip_modem, "ID")
             
             if "error" in res_cust:
-                console.print(f"[danger]Gagal trace ke pelanggan: {res_cust['error']}[/danger]")
+                console.print(f"[danger]Failed to trace to customer: {res_cust['error']}[/danger]")
             else:
                 hops_cust = extract_hops(res_cust)
-                table_cust = Table(title=f"Traceroute Cloud ke Modem Pelanggan ({ip_modem})", show_header=True, header_style="bold magenta")
+                table_cust = Table(title=f"Cloud Traceroute to Customer Modem ({ip_modem})", show_header=True, header_style="bold magenta")
                 table_cust.add_column("Hop", style="cyan", justify="right")
                 table_cust.add_column("IP Address", style="green")
                 table_cust.add_column("Latency", style="yellow")
@@ -567,136 +571,136 @@ def local_traceroute():
                         
                 console.print("\n", table_cust, "\n")
 
-    # ================= ANALISIS DETAIL =================
-    console.print("[analisis]💡 ANALISIS & REKOMENDASI UNTUK NOC:[/analisis]")
+    # ================= DETAILED ANALYSIS =================
+    console.print("[analisis]💡 ANALYSIS & RECOMMENDATION FOR NOC:[/analisis]")
     
-    console.print(f"[bold]1. Evaluasi Rute ke {target}:[/bold]")
+    console.print(f"[bold]1. Route Evaluation to {target}:[/bold]")
     if timeout_target > 3:
-        console.print(f"   - [danger]Ditemukan {timeout_target} Hop Timeout (Packet Loss).[/danger]")
-        console.print(f"   - Latency maksimum yang berhasil direkam: {max_lat_target} ms.")
-        console.print("   - Indikasi: Target memblokir ICMP atau ada kongesti rute internasional.")
+        console.print(f"   - [danger]Found {timeout_target} Hop Timeout (Packet Loss).[/danger]")
+        console.print(f"   - Maximum latency recorded: {max_lat_target} ms.")
+        console.print("   - Indication: Target blocks ICMP or there is international route congestion.")
     else:
-        console.print(f"   - [success]Rute Normal. Latency maksimum: {max_lat_target} ms.[/success]")
+        console.print(f"   - [success]Normal Route. Maximum latency: {max_lat_target} ms.[/success]")
         
     if ip_modem:
-        console.print(f"\n[bold]2. Evaluasi Rute ke Pelanggan ({ip_modem}):[/bold]")
+        console.print(f"\n[bold]2. Route Evaluation to Customer ({ip_modem}):[/bold]")
         if timeout_cust > 3:
-            console.print(f"   - [danger]Ditemukan {timeout_cust} Hop Timeout menuju pelanggan.[/danger]")
-            console.print(f"   - Latency maksimum: {max_lat_cust} ms.")
-            console.print("   - Indikasi: Masalah pada jaringan akses (ODP/Kabel) atau modem pelanggan memblokir ICMP.")
+            console.print(f"   - [danger]Found {timeout_cust} Hop Timeout to customer.[/danger]")
+            console.print(f"   - Maximum latency: {max_lat_cust} ms.")
+            console.print("   - Indication: Issue on access network (ODP/Cable) or customer modem blocks ICMP.")
         else:
-            console.print(f"   - [success]Rute Normal. Latency maksimum: {max_lat_cust} ms.[/success]")
+            console.print(f"   - [success]Normal Route. Maximum latency: {max_lat_cust} ms.[/success]")
 
-    # ================= KESIMPULAN & REKOMENDASI =================
-    console.print("\n[bold yellow]📋 KESIMPULAN & AKSI:[/bold yellow]")
+    # ================= CONCLUSION & RECOMMENDATION =================
+    console.print("\n[bold yellow]📋 CONCLUSION & ACTION:[/bold yellow]")
     if timeout_target > 3 and (not ip_modem or timeout_cust > 3):
-        console.print("- [danger]Kedua jalur mengalami Packet Loss / Timeout signifikan.[/danger]")
-        console.print("- [bold]Aksi:[/bold] Eskalasi ke NOC (Backbone). Lampirkan laporan di bawah.")
+        console.print("- [danger]Both routes experienced significant Packet Loss / Timeout.[/danger]")
+        console.print("- [bold]Action:[/bold] Escalate to NOC (Backbone). Attach the report below.")
     elif timeout_target > 3 and timeout_cust <= 3:
-        console.print("- [warning]Jalur ke Target Timeout, tapi jalur ke Pelanggan Normal.[/warning]")
-        console.print("- [bold]Aksi:[/bold] Eskalasi ke NOC (Peering). Masalah ada di rute keluar ISP menuju server target.")
+        console.print("- [warning]Route to Target Timeout, but route to Customer is Normal.[/warning]")
+        console.print("- [bold]Action:[/bold] Escalate to NOC (Peering). Issue is on the outbound ISP route to the target server.")
     elif timeout_target <= 3 and ip_modem and timeout_cust > 3:
-        console.print("- [warning]Jalur ke Target Normal, tapi jalur ke Pelanggan Timeout.[/warning]")
-        console.print("- [bold]Aksi:[/bold] Kirim Teknisi. Masalah ada di sisi akses pelanggan (ODP/Kabel).")
+        console.print("- [warning]Route to Target is Normal, but route to Customer Timeout.[/warning]")
+        console.print("- [bold]Action:[/bold] Send Technician. Issue is on the customer access side (ODP/Cable).")
     elif ip_modem and timeout_target <= 3 and timeout_cust <= 3:
-        console.print("- [success]Kedua jalur (Target & Pelanggan) terlihat NORMAL.[/success]")
-        console.print("- [bold]Aksi:[/bold] Jaringan ISP aman. Cek WiFi/HP pelanggan atau tunggu server target pulih.")
+        console.print("- [success]Both routes (Target & Customer) appear NORMAL.[/success]")
+        console.print("- [bold]Action:[/bold] ISP network is safe. Check customer WiFi/Device or wait for target server to recover.")
     else:
-        console.print("- [info]Hanya trace ke Target. Jika ada timeout, eskalasi ke NOC.[/info]")
+        console.print("- [info]Only tracing to Target. If there is timeout, escalate to NOC.[/info]")
 
-    # ================= FORMAT LAPORAN NOC (DETAIL) =================
+    # ================= NOC REPORT FORMAT =================
     if timeout_target > 3 or (ip_modem and timeout_cust > 3):
-        console.print("\n[bold yellow]📋 FORMAT LAPORAN NOC (Copy-Paste):[/bold yellow]")
-        console.print(f"Kepada Tim DSO/NOC,")
-        console.print(f"Mohon bantu pengecekan rute jaringan untuk pelanggan berikut:")
-        console.print(f" - Target Keluhan : {target}")
-        if ip_modem: console.print(f" - IP Modem       : {ip_modem}")
-        console.print(f" - Hasil Trace ke Target  : {timeout_target} Hop Timeout (Max Latency: {max_lat_target} ms)")
+        console.print("\n[bold yellow]📋 NOC REPORT FORMAT (Copy-Paste):[/bold yellow]")
+        console.print(f"To DSO/NOC Team,")
+        console.print(f"Please assist in checking the network route for the following customer:")
+        console.print(f" - Complaint Target : {target}")
+        if ip_modem: console.print(f" - Modem IP         : {ip_modem}")
+        console.print(f" - Trace to Target  : {timeout_target} Hop Timeout (Max Latency: {max_lat_target} ms)")
         if ip_modem:
-            console.print(f" - Hasil Trace ke Pelanggan : {timeout_cust} Hop Timeout (Max Latency: {max_lat_cust} ms)")
-        console.print(f"\nMohon bantu cek routing BGP / peering ke arah target, atau kualitas ODP jika jalur pelanggan yang putus. Terlampir hasil traceroute.")
+            console.print(f" - Trace to Customer: {timeout_cust} Hop Timeout (Max Latency: {max_lat_cust} ms)")
+        console.print(f"\nPlease check BGP routing / peering towards the target, or ODP quality if the customer route is broken. Traceroute results attached.")
     
     pause()
 
-# ================= FITUR 5: CEK EMBASY =================
+# ================= FEATURE 5: CHECK EMBASY =================
 def cek_embasy():
-    show_header("Cek Embasy (Gladius Scraper)")
-    console.print("[bold]Masukkan data pelanggan.[/bold]")
+    show_header("Check Embasy (Gladius Scraper)")
+    console.print("[bold]Enter customer data.[/bold]")
     
     while True:
-        nomor = Prompt.ask("Nomor Internet (contoh: 131169107209)").strip()
+        nomor = Prompt.ask("Internet Number (e.g., 131169107209)").strip()
         if nomor.isdigit() and len(nomor) >= 8:
             break
-        console.print("[bold red]❌ Error: Nomor Internet harus berupa ANGKA dan minimal 8 digit![/bold red]")
+        console.print("[bold red]❌ Error: Internet Number must be NUMERIC and at least 8 digits![/bold red]")
         
     while True:
-        domain = Prompt.ask("Domain (contoh: telkom.net)", default="telkom.net").strip()
+        domain = Prompt.ask("Domain (e.g., telkom.net)", default="telkom.net").strip()
         if domain:
             break
-        console.print("[bold red]❌ Error: Domain tidak boleh kosong![/bold red]")
+        console.print("[bold red]❌ Error: Domain cannot be empty![/bold red]")
     
-    console.print("[cyan]Menarik data pelanggan, mohon tunggu...[/cyan]")
+    console.print("[cyan]Fetching customer data, please wait...[/cyan]")
     
     try:
         summary_data, result = asyncio.run(run_gladius(nomor, domain))
         
         if summary_data:
-            table = Table(title=f"Summary Pelanggan: {nomor}", show_header=True, header_style="bold magenta")
+            table = Table(title=f"Customer Summary: {nomor}", show_header=True, header_style="bold magenta")
             table.add_column("Parameter", style="cyan")
             table.add_column("Value", style="green")
             
-            table.add_row("Nomor", summary_data.get("Nomor", "-"))
+            table.add_row("Number", summary_data.get("Nomor", "-"))
             table.add_row("Domain", summary_data.get("Domain", "-"))
-            table.add_row("IP Statik", summary_data.get("IP Statik", "-"))
-            table.add_row("Paket", summary_data.get("Paket", "-"))
-            table.add_row("Status Pelanggan", summary_data.get("Status", "-"))
+            table.add_row("Static IP", summary_data.get("IP Statik", "-"))
+            table.add_row("Package", summary_data.get("Paket", "-"))
+            table.add_row("Customer Status", summary_data.get("Status", "-"))
             table.add_row("Port Binding", summary_data.get("Port Binding", "-"))
             table.add_row("EQN", summary_data.get("EQN", "-"))
             table.add_row("IP OLT", summary_data.get("IP OLT", "-"))
             table.add_row("ONU Rx Power", summary_data.get("Rx Power", "-"))
             table.add_row("NAS IP (BRAS)", summary_data.get("NAS IP", "-"))
             table.add_row("Framed IP (Modem)", summary_data.get("Framed IP", "-"))
-            table.add_row("Status Koneksi", summary_data.get("Status Koneksi", "-"))
+            table.add_row("Connection Status", summary_data.get("Status Koneksi", "-"))
             
             console.print("\n", table, "\n")
             
-            # Link Download
+            # Download Link
             download_url = f"https://tracker.sein.bid/download/{result}"
-            console.print(f"[success]✅ Data berhasil diambil![/success]")
+            console.print(f"[success]✅ Data retrieved successfully![/success]")
             console.print(f"[bold cyan]🔗 Download Capture: [underline]{download_url}[/underline][/bold cyan]\n")
             
-            console.print("[analisis]💡 ANALISIS & REKOMENDASI:[/analisis]")
+            console.print("[analisis]💡 ANALYSIS & RECOMMENDATION:[/analisis]")
             if summary_data.get("Status Koneksi") == "Interim-Update":
-                console.print("- Status Koneksi: ONLINE (Interim-Update). Modem pelanggan terhubung ke jaringan.")
+                console.print("- Connection Status: ONLINE (Interim-Update). Customer modem is connected to the network.")
             elif summary_data.get("Status Koneksi") == "-":
-                console.print("- [warning]Status Koneksi Kosong. Modem pelanggan mungkin OFFLINE atau belum ada sesi PPPoE.[/warning]")
+                console.print("- [warning]Connection Status is Empty. Customer modem might be OFFLINE or no PPPoE session yet.[/warning]")
             
             try:
                 rx_power = float(summary_data.get("Rx Power", "-").replace(" dBm", ""))
                 if rx_power < -27:
-                    console.print(f"- [danger]Rx Power lemah ({rx_power} dBm). Cek redaman kabel optik![/danger]")
+                    console.print(f"- [danger]Weak Rx Power ({rx_power} dBm). Check optical cable attenuation![/danger]")
                 else:
-                    console.print(f"- Rx Power normal ({rx_power} dBm). Kualitas optik bagus.")
+                    console.print(f"- Normal Rx Power ({rx_power} dBm). Good optical quality.")
             except:
                 pass
                 
         else:
-            console.print(f"[danger]❌ Gagal: {result}[/danger]")
+            console.print(f"[danger]❌ Failed: {result}[/danger]")
             
     except Exception as e:
-        console.print(f"[danger]❌ Error sistem: {e}[/danger]")
+        console.print(f"[danger]❌ System Error: {e}[/danger]")
         
     pause()
 
-# ================= FITUR 6: UPWORK HUNTER =================
+# ================= FEATURE 6: UPWORK HUNTER =================
 def upwork_hunter():
     show_header("Upwork Project Hunter")
-    console.print("[bold]Analisa Proyek Upwork & Estimasi Profit AI[/bold]\\n")
+    console.print("[bold]Upwork Project Analysis & AI Profit Estimation[/bold]\n")
     
     import subprocess
     
-    console.print("[cyan]Menjalankan Playwright (Mode Stealth + Xvfb)...[/cyan]")
-    console.print("[yellow]Browser jalan di background. Tunggu proses scrape selesai...[/yellow]\\n")
+    console.print("[cyan]Running Playwright (Stealth Mode + Xvfb)...[/cyan]")
+    console.print("[yellow]Browser is running in the background. Please wait for the scrape process to finish...[/yellow]\n")
     
     try:
         # Jalanin script upwork_auto.py pake xvfb-run
@@ -704,28 +708,28 @@ def upwork_hunter():
     except subprocess.CalledProcessError as e:
         console.print(f"[danger]❌ Script error (Exit Code: {e.returncode})[/danger]")
     except Exception as e:
-        console.print(f"[danger]❌ Gagal: {e}[/danger]")
+        console.print(f"[danger]❌ Failed: {e}[/danger]")
         
     pause()
 
-# ================= FITUR 7: WEB TRAFFIC INTERCEPTOR =================
+# ================= FEATURE 7: WEB TRAFFIC INTERCEPTOR =================
 def sniffer_menu():
     show_header("Universal Reverse Engine Web")
-    console.print("[bold]Membedah API & Navigasi Web Universal.[/bold]\\n")
+    console.print("[bold]Dissecting API & Universal Web Navigation.[/bold]\n")
     
     import subprocess
-    console.print("[cyan]Menjalankan Playwright (Virtual Display)...[/cyan]")
-    console.print("[yellow]Browser jalan di background. Ikuti instruksi di layar.\\n[/yellow]")
+    console.print("[cyan]Running Playwright (Virtual Display)...[/cyan]")
+    console.print("[yellow]Browser is running in the background. Follow the instructions on screen.\n[/yellow]")
     
     try:
         subprocess.run(["xvfb-run", "-a", "python3", "universal_sniffer_v3.py"], check=True)
     except Exception as e:
-        console.print(f"[danger]❌ Gagal: {e}[/danger]")
+        console.print(f"[danger]❌ Failed: {e}[/danger]")
         
     pause()
 
 if __name__ == "__main__":
     if not API_KEY:
-        console.print("[danger]API_KEY_REAL tidak ditemukan di .env![/danger]")
+        console.print("[danger]API_KEY_REAL not found in .env![/danger]")
         sys.exit(1)
     menu()

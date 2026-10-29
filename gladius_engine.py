@@ -50,7 +50,7 @@ def parse_summary(html_content):
 async def login_gladius(page, context):
     MAX_RETRIES = 3
     for attempt in range(MAX_RETRIES):
-        console.print(f"\n[bold cyan]🔐 Memverifikasi identitas ({attempt+1}/{MAX_RETRIES})...[/bold cyan]")
+        console.print(f"\n[bold cyan]🔐 Verifying identity ({attempt+1}/{MAX_RETRIES})...[/bold cyan]")
         
         await page.goto(URL_LOGIN)
         await page.wait_for_timeout(2000)
@@ -66,7 +66,7 @@ async def login_gladius(page, context):
         with open(captcha_path, "wb") as f:
             f.write(img_response.content)
         
-        console.print("\n[bold yellow]Silahkan masukan Captcha berikut :[/bold yellow]")
+        console.print("\n[bold yellow]Please enter the following Captcha :[/bold yellow]")
         try:
             img = Image.open(captcha_path)
             pixels = Pixels.from_image(img)
@@ -74,10 +74,10 @@ async def login_gladius(page, context):
         except:
             pass
             
-        captcha_text = input("\nInput CAPTCHA disini : ").strip()
+        captcha_text = input("\nInput CAPTCHA here : ").strip()
         
         if len(captcha_text) < 3:
-            console.print("[warning]⚠️ CAPTCHA terlalu pendek, ulangi.[/warning]")
+            console.print("[warning]⚠️ CAPTCHA too short, retrying.[/warning]")
             continue
 
         await page.fill("#uname", NIK)
@@ -88,7 +88,7 @@ async def login_gladius(page, context):
         await page.wait_for_timeout(3000)
         
         if "numbercheck" in page.url or "login" in page.url:
-            console.print("[bold red]❌ CAPTCHA atau Password SALAH! Ulangi.[/bold red]")
+            console.print("[bold red]❌ CAPTCHA or Password WRONG! Retrying.[/bold red]")
             continue 
 
         totp = pyotp.TOTP(TOTP_SECRET)
@@ -98,15 +98,15 @@ async def login_gladius(page, context):
             await page.click("button[type='submit']")
             await page.wait_for_timeout(3000)
         except:
-            console.print("[warning]⚠️ Gagal memasukkan kode verifikasi, ulangi.[/warning]")
+            console.print("[warning]⚠️ Failed to enter verification code, retrying.[/warning]")
             continue
 
         if "otp" in page.url:
-            console.print("[bold red]❌ Kode verifikasi SALAH! Ulangi.[/bold red]")
+            console.print("[bold red]❌ Verification code WRONG! Retrying.[/bold red]")
             continue
 
         await context.storage_state(path=SESSION_FILE)
-        console.print("[bold green]✅ Identitas terverifikasi. Token disimpan.[/bold green]")
+        console.print("[bold green]✅ Identity verified. Token saved.[/bold green]")
         return True
         
     return False
@@ -115,43 +115,46 @@ async def run_gladius(nomor_internet, domain):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         
-        # 1. Cek File Session
         session_exists = os.path.exists(SESSION_FILE)
         
         if session_exists:
-            console.print("[cyan]Menyiapkan koneksi ke server...[/cyan]")
+            console.print("[cyan]Checking previous session...[/cyan]")
             context = await browser.new_context(storage_state=SESSION_FILE)
         else:
-            console.print("[cyan]Memuat modul keamanan...[/cyan]")
             context = await browser.new_context()
             
         page = await context.new_page()
 
-        # 2. Validasi Session (Kalo gak ada file, langsung paksa login)
+        # Validate Session
         is_valid = False
         if session_exists:
             await page.goto(URL_RADONLINE)
             await page.wait_for_timeout(3000)
             if not ("numbercheck" in page.url or "login" in page.url):
                 is_valid = True
-                console.print("[bold green]✅ Koneksi aman. Mengambil data pelanggan...[/bold green]")
+                console.print("[bold green]✅ Session active. Proceeding to data extraction...[/bold green]")
         
-        # 3. Kalo Session Gak Valid / Gak Ada, Login
         if not is_valid:
             if session_exists:
-                console.print("[warning]⚠️ Sesi keamanan berakhir, memperbarui token...[/warning]")
+                console.print("[warning]⚠️ Session expired. Re-login required.[/warning]")
                 os.remove(SESSION_FILE)
             
             login_success = await login_gladius(page, context)
             if not login_success:
                 await browser.close()
-                return None, "Verifikasi gagal setelah 3x percobaan."
+                return None, "Login failed after 3 attempts."
                 
             await page.goto(URL_RADONLINE)
             await page.wait_for_timeout(3000)
 
         # ================= PROCESS RADONLINE =================
         try:
+            if "radonline" not in page.url.lower():
+                await page.screenshot(path="debug_radonline_gagal.png")
+                console.print(f"[danger]❌ Failed to enter RadOnline. URL: {page.url}[/danger]")
+                await browser.close()
+                return None, "Failed to enter RadOnline page."
+
             await page.fill("input[name='no_speedy']", nomor_internet)
             await page.select_option("select[name='domain']", domain)
             await page.locator("button", has_text="Cek").click()
@@ -181,5 +184,6 @@ async def run_gladius(nomor_internet, domain):
             return summary_data, output_filename
             
         except Exception as e:
+            await page.screenshot(path="debug_radonline_gagal.png")
             await browser.close()
-            return None, f"Gagal RadOnline: {str(e)}"
+            return None, f"RadOnline failed: {str(e)}"

@@ -1,15 +1,25 @@
 import asyncio
+import json
+import re
+import html
+import os
+import pandas as pd
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 from rich.console import Console
 from rich.table import Table
 from rich.prompt import Prompt
-import pandas as pd
-import re
-import html
-import json
+from dotenv import load_dotenv
+from openai import AsyncOpenAI
 
+load_dotenv()
 console = Console()
+
+# Setup OpenRouter Client (Kita pake model Llama-3 yang stabil & murah)
+client = AsyncOpenAI(
+    api_key=os.getenv("OPENROUTER_API_KEY", ""),
+    base_url="https://openrouter.ai/api/v1"
+)
 
 def clean_cookies(cookies):
     cleaned = []
@@ -25,9 +35,47 @@ def clean_cookies(cookies):
         cleaned.append(new_c)
     return cleaned
 
+async def analyze_with_ai(title, description):
+    prompt = f"""
+    You are an expert IT Project Manager. Analyze this Upwork project using the STAR method.
+    Estimate the difficulty (Easy/Medium/Hard) and the AI API cost (USD) needed.
+    Return ONLY a valid JSON object:
+    {{
+        "level": "Hard",
+        "situation": "Brief context",
+        "task": "What needs to be done",
+        "action": "How to do it",
+        "result": "Expected outcome",
+        "estimated_cost_usd": 0.50
+    }}
+    
+    Project Title: {title}
+    Description: {description[:1500]}
+    """
+    
+    try:
+        response = await client.chat.completions.create(
+            model="meta-llama/llama-3.1-8b-instruct", # Model berbayar murah ($0.05/1jt token)
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.3
+        )
+        content = response.choices[0].message.content
+        
+        if not content:
+            return None
+            
+        content = content.replace("```json", "").replace("```", "").strip()
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            return json.loads(json_match.group(0))
+    except Exception as e:
+        console.print(f"[warning]AI analysis failed: {e}[/warning]")
+    return None
+
 async def main():
     async with async_playwright() as p:
-        console.print("[cyan]Membuka browser (Mode Stealth)...[/cyan]")
+        console.print("[cyan]Opening browser (Stealth Mode)...[/cyan]")
         
         browser = await p.chromium.launch(
             headless=False,
@@ -42,142 +90,94 @@ async def main():
         try:
             with open("cookies.json", "r") as f:
                 raw_cookies = json.load(f)
-            cookies = clean_cookies(raw_cookies)
-            await context.add_cookies(cookies)
-            console.print(f"[green]✅ {len(cookies)} Cookies di-load![/green]")
-        except Exception as e:
-            console.print(f"[danger]❌ Gagal load cookies: {e}[/danger]")
+            await context.add_cookies(clean_cookies(raw_cookies))
+            console.print("[green]✅ Cookies loaded![/green]")
+        except:
+            console.print("[danger]❌ Failed to load cookies.json[/danger]")
             await browser.close()
             return
 
         page = await context.new_page()
         await page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         
-        keyword = Prompt.ask("\nMasukkan keyword proyek (misal: data entry)").strip()
+        keyword = Prompt.ask("\nEnter project keyword").strip()
         if not keyword:
             await browser.close()
             return
             
-        console.print(f"[cyan]Mencari proyek '{keyword}'...[/cyan]")
+        console.print(f"[cyan]Searching for '{keyword}'...[/cyan]")
         await page.goto(f"https://www.upwork.com/nx/search/jobs/?q={keyword}")
         await page.wait_for_timeout(5000)
         
-        html_content = await page.content()
-        soup = BeautifulSoup(html_content, "html.parser")
-        
-        jobs = soup.find_all("article", attrs={"data-test": "JobTile"})
-        console.print(f"[cyan]Menemukan {len(jobs)} card proyek.[/cyan]")
+        cards = page.locator("article[data-test='JobTile']")
+        count = await cards.count()
+        console.print(f"[cyan]Found {count} projects. Starting deep analysis...[/cyan]")
         
         data_proyek = []
-        for job in jobs:
-            title_tag = job.find("h2", class_="job-tile-title")
-            if not title_tag: continue
-            title = html.unescape(title_tag.get_text(strip=True))
-            
-            # --- CARI BUDGET (Anti Nyasar) ---
-            budget = "N/A"
-            
-            # 1. Cari dari <li data-test="job-type-label">
-            job_info_li = job.find("li", attrs={"data-test": "job-type-label"})
-            if job_info_li:
-                strong_tag = job_info_li.find("strong")
-                if strong_tag:
-                    budget_text = strong_tag.get_text(strip=True)
-                    # Format harus $X atau $X.XX atau $X - $Y
-                    m = re.search(r'\$\d{1,5}(?:[.,]\d+)?(?:\s*-\s*\$\d{1,5}(?:[.,]\d+)?)?', budget_text)
-                    if m:
-                        budget = m.group(0).strip()
-            
-            # 2. Fallback: "Fixed-price" atau "Est. budget"
-            if budget == "N/A":
-                text_all = job.get_text()
-                m2 = re.search(r'(?:Fixed-price|Est\. budget):?\s*(\$\d{1,5}(?:[.,]\d+)?(?:\s*-\s*\$\d{1,5}(?:[.,]\d+)?)?)', text_all, re.IGNORECASE)
-                if m2:
-                    budget = m2.group(1).strip()
-                else:
-                    for strong in job.find_all("strong"):
-                        txt = strong.get_text(strip=True)
-                        # Cek format budget yang valid (ada desimal atau range, dan lebih dari 0)
-                        if re.match(r'^\$\d{1,5}(?:[.,]\d+)?(?:\s*-\s*\$\d{1,5}(?:[.,]\d+)?)?$', txt):
-                            # Cek apakah nilainya 0
-                            if not txt.startswith("$0"):
-                                budget = txt
-                                break
-                            
-            # 3. Validasi akhir: Kalo gak ada desimal & bukan range, anggap N/A (kecuali > $100)
-            if budget != "N/A":
-                if "." not in budget and "-" not in budget:
-                    # Kalo cuma "$10" (tanpa desimal), cek apakah masuk akal
-                    try:
-                        val = float(budget.replace("$", ""))
-                        if val < 5: # Budget $1-$4 tanpa desimal biasanya ngaco
-                            budget = "N/A"
-                    except:
-                        budget = "N/A"
-                # Kalo "$0", jadi N/A
-                if budget.startswith("$0"):
-                    budget = "N/A"
-
-            # Ambil deskripsi
-            desc = ""
-            for p_tag in job.find_all(["p", "span"]):
-                txt = p_tag.get_text(strip=True)
-                if len(txt) > 50:
-                    desc = html.unescape(txt)
-                    break
-
-            # Logic AI
-            ai_model = "GPT-4o Text"
-            est_cost_val = 0.01
-            if any(k in desc.lower() for k in ["image", "gambar", "extract", "photo", "ocr", "annotation"]):
-                ai_model = "Gemini Vision / GPT-4o Vision"
-                est_cost_val = 0.05
+        for i in range(min(5, count)):
+            try:
+                card = cards.nth(i)
+                link = card.locator("a").first
+                title = await link.inner_text()
+                url = await link.get_attribute("href")
                 
-            # Hitung Profit
-            if budget != "N/A":
+                if not url: continue
+                if not url.startswith("http"): url = "https://www.upwork.com" + url
+                    
+                console.print(f"[dim]Analyzing: {title[:40]}...[/dim]")
+                
+                detail_page = await context.new_page()
+                await detail_page.goto(url)
+                await detail_page.wait_for_timeout(3000)
+                
+                desc_el = detail_page.locator("[data-test='job-description']").first
+                desc = await desc_el.inner_text() if await desc_el.count() > 0 else "No description"
+                
                 try:
-                    clean_budget = budget.replace("$", "").replace(",", ".").replace(" ", "")
-                    if "-" in clean_budget:
-                        parts = clean_budget.split("-")
-                        avg_budget = (float(parts[0]) + float(parts[1])) / 2
-                    else:
-                        avg_budget = float(clean_budget)
-                    profit = avg_budget - est_cost_val
-                    profit_str = f"${profit:.2f}"
+                    budget_el = detail_page.locator("[data-test='job-type-label'] strong").first
+                    budget = await budget_el.inner_text() if await budget_el.count() > 0 else "N/A"
                 except:
-                    profit_str = "N/A"
-            else:
-                profit_str = "N/A"
-
-            data_proyek.append({
-                "Judul": title[:45] + "..." if len(title) > 45 else title,
-                "Budget": budget,
-                "AI Model": ai_model,
-                "Modal": f"${est_cost_val:.2f}",
-                "Profit": profit_str
-            })
+                    budget = "N/A"
+                
+                # AI Analysis pake Llama-3
+                console.print("[dim]  (Waiting for AI...)[/dim]")
+                ai_result = await analyze_with_ai(title, desc)
+                
+                if ai_result:
+                    data_proyek.append({
+                        "Title": title[:40] + "...",
+                        "Budget": budget,
+                        "Level": ai_result.get("level", "-"),
+                        "Est. Cost": f"${ai_result.get('estimated_cost_usd', 0.00):.2f}",
+                        "Situation": ai_result.get("situation", "-")[:50] + "...",
+                        "Task": ai_result.get("task", "-")[:50] + "..."
+                    })
+                else:
+                    console.print("[dim]  AI failed, skipping.[/dim]")
+                
+                await detail_page.close()
+                await page.wait_for_timeout(1000)
+                
+            except Exception as e:
+                console.print(f"[warning]Skipped: {e}[/warning]")
 
         if data_proyek:
-            table = Table(title="Upwork Project Analyzer", header_style="bold magenta")
-            table.add_column("Judul", style="cyan")
+            table = Table(title="Upwork Deep Analysis (AI-Powered)", header_style="bold magenta")
+            table.add_column("Title", style="cyan")
             table.add_column("Budget", style="green")
-            table.add_column("AI Model", style="yellow")
-            table.add_column("Modal", style="red")
-            table.add_column("Profit", style="bold green")
-
-            for p_item in data_proyek:
-                table.add_row(p_item["Judul"], p_item["Budget"], p_item["AI Model"], p_item["Modal"], p_item["Profit"])
+            table.add_column("Level", style="yellow")
+            table.add_column("Est. Cost", style="red")
+            table.add_column("Situation", style="blue")
+            table.add_column("Task", style="magenta")
+            
+            for p in data_proyek:
+                table.add_row(p["Title"], p["Budget"], p["Level"], p["Est. Cost"], p["Situation"], p["Task"])
 
             console.print("\n", table, "\n")
             
             df = pd.DataFrame(data_proyek)
-            df.to_csv("Upwork_Analysis.csv", index=False)
-            
-            download_url = "https://tracker.sein.bid/download/upwork/Upwork_Analysis.csv"
-            console.print("[bold green]✅ Data berhasil diambil![/bold green]")
-            console.print(f"[bold cyan]🔗 Download CSV (Copy link ini):[/bold cyan]\n[underline]{download_url}[/underline]\n")
-        else:
-            console.print("[warning]Gak ada proyek yang ketangkep.[/warning]")
+            df.to_csv("Upwork_Deep_Analysis.csv", index=False)
+            console.print("[bold green]✅ Deep Analysis saved to Upwork_Deep_Analysis.csv[/bold green]")
 
         await browser.close()
 

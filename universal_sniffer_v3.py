@@ -1,6 +1,6 @@
 import asyncio
-import time
 import os
+import time
 from playwright.async_api import async_playwright
 from rich.console import Console
 from rich.prompt import Prompt
@@ -14,7 +14,7 @@ async def run_sniffer(url):
         url = "https://" + url
         
     async with async_playwright() as p:
-        console.print(Panel(f"[bold cyan]Membuka {url}...[/bold cyan]", title="Web Interceptor v3"))
+        console.print(Panel(f"[bold cyan]Opening {url}...[/bold cyan]", title="Web Interceptor v3"))
         browser = await p.chromium.launch(headless=False, args=["--no-sandbox"])
         context = await browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -25,15 +25,14 @@ async def run_sniffer(url):
         page.on("response", lambda res: asyncio.create_task(handle_response(res, captured_requests)))
 
         await page.goto(url)
-        console.print("[cyan]Menunggu aplikasi selesai render (5 detik)...[/cyan]")
-        await page.wait_for_timeout(5000)
+        await page.wait_for_timeout(3000)
         
         step = 1
         while True:
             console.clear()
-            console.print(Panel(f"[bold]STEP {step}: ANALISA HALAMAN[/bold]", border_style="cyan"))
+            console.print(Panel(f"[bold]STEP {step}: PAGE ANALYSIS[/bold]", border_style="cyan"))
             
-            # 1. Cari input form
+            # 1. Look for input forms
             fields = []
             inputs = page.locator("input[type='text'], input[type='password'], input[type='email'], select, textarea")
             for i in range(await inputs.count()):
@@ -44,29 +43,27 @@ async def run_sniffer(url):
                     if tag == "select" or not await el.input_value():
                         fields.append({"locator": el, "tag": tag, "name": name})
 
-            # 2. Kalo ada input form, proses
+            # 2. If fields found, process them
             if fields:
                 table = Table(show_header=True, header_style="bold magenta")
                 table.add_column("No", style="cyan")
-                table.add_column("Tipe", style="yellow")
-                table.add_column("Nama Field", style="green")
+                table.add_column("Type", style="yellow")
+                table.add_column("Field Name", style="green")
                 for idx, f in enumerate(fields):
                     table.add_row(str(idx+1), f["tag"], f["name"])
                 console.print(table)
                 
-                # AMBIL SCREENSHOT & SIMPEN
                 await page.keyboard.press("Escape")
                 await page.wait_for_timeout(1000)
                 await page.screenshot(path="input_field.png")
                 
-                # LINK DOWNLOAD SCREENSHOT
                 timestamp = int(time.time())
                 download_url = f"https://tracker.sein.bid/download/input_field.png?t={timestamp}"
-                console.print(f"\n[bold green]✅ Screenshot disimpan![/bold green]")
-                console.print(f"[bold cyan]🔗 Buka di browser: [underline]{download_url}[/underline][/bold cyan]\n")
+                console.print(f"\n[bold green]✅ Screenshot saved![/bold green]")
+                console.print(f"[bold cyan]🔗 Open in browser: [underline]{download_url}[/underline][/bold cyan]\n")
                 
                 for idx, f in enumerate(fields):
-                    val = Prompt.ask(f"Nilai untuk {f['name']}").strip()
+                    val = Prompt.ask(f"Value for {f['name']}").strip()
                     if val:
                         try:
                             if f["tag"] == "select":
@@ -75,22 +72,21 @@ async def run_sniffer(url):
                                 await f["locator"].fill(val)
                         except: pass
                 
-                # AMBIL SCREENSHOT BARU SETELAH DIISI
                 await page.wait_for_timeout(1000)
                 await page.screenshot(path="input_field.png")
                 timestamp = int(time.time())
                 download_url = f"https://tracker.sein.bid/download/input_field.png?t={timestamp}"
-                console.print(f"\n[bold green]✅ Form telah diisi. Screenshot terbaru disimpan![/bold green]")
-                console.print(f"[bold cyan]🔗 Buka di browser untuk verifikasi: [underline]{download_url}[/underline][/bold cyan]\n")
+                console.print(f"\n[bold green]✅ Form filled. Latest screenshot saved![/bold green]")
+                console.print(f"[bold cyan]🔗 Open in browser to verify: [underline]{download_url}[/underline][/bold cyan]\n")
                 
-                confirm = Prompt.ask("[yellow]Sudah benar semua isiannya? (y/n)[/yellow]", default="y")
+                confirm = Prompt.ask("[yellow]Is everything correct? (y/n)[/yellow]", default="y")
                 if confirm == "n":
                     step += 1
                     continue
                 
                 # Submit
-                console.print("[cyan]Klik Submit...[/cyan]")
-                for sel in ["button[type='submit']", "button:has-text('Login')", "button:has-text('Masuk')", "button:has-text('Sign In')", "button:has-text('Submit')", "button.btn-primary"]:
+                console.print("[cyan]Clicking Submit...[/cyan]")
+                for sel in ["button[type='submit']", "button:has-text('Login')", "button:has-text('Sign In')", "button:has-text('Submit')", "button.btn-primary"]:
                     btn = page.locator(sel).first
                     if await btn.count() > 0 and await btn.is_visible():
                         await btn.click()
@@ -99,8 +95,8 @@ async def run_sniffer(url):
                 step += 1
                 continue
 
-            # 3. KALO GAK ADA INPUT, TAMPILIN TOMBOL/LINK
-            console.print("[yellow]⚠️ Tidak ada input form. Mencari tombol/link...[/yellow]")
+            # 3. No fields, look for buttons/links
+            console.print("[yellow]⚠️ No input forms detected. Searching for buttons/links...[/yellow]")
             await page.keyboard.press("Escape")
             await page.wait_for_timeout(1000)
             await page.screenshot(path="confirm_page.png")
@@ -108,9 +104,9 @@ async def run_sniffer(url):
             timestamp = int(time.time())
             download_url = f"https://tracker.sein.bid/download/confirm_page.png?t={timestamp}"
             console.print(f"[bold green]✅ Screenshot: confirm_page.png![/bold green]")
-            console.print(f"[bold cyan]🔗 Buka di browser: [underline]{download_url}[/underline][/bold cyan]\n")
+            console.print(f"[bold cyan]🔗 Open in browser: [underline]{download_url}[/underline][/bold cyan]\n")
 
-            # Cari tombol
+            # Find buttons
             buttons = []
             clickables = page.locator("a, button, .btn, .card, [role='button']")
             count = await clickables.count()
@@ -121,7 +117,7 @@ async def run_sniffer(url):
                     if text.strip() and len(text.strip()) < 60:
                         buttons.append({"locator": el, "text": text.strip()})
 
-            # Kalo gak nemu tombol, scan teks
+            # If no buttons, scan text
             if not buttons:
                 all_elements = page.locator("div, span, h1, h2, h3, h4, h5, h6, p")
                 for i in range(await all_elements.count()):
@@ -144,34 +140,33 @@ async def run_sniffer(url):
                 buttons = unique_buttons
 
             if buttons:
-                console.print(f"[bold cyan]Terdeteksi {len(buttons)} tombol/link:[/bold cyan]")
+                console.print(f"[bold cyan]Detected {len(buttons)} buttons/links:[/bold cyan]")
                 for idx, btn in enumerate(buttons[:10]):
                     console.print(f"  [{idx+1}] {btn['text']}")
                 
-                choice = Prompt.ask("\nPilih nomor tombol (atau 'SKIP' untuk selesai)", default="SKIP")
+                choice = Prompt.ask("\nSelect button number (or 'SKIP' to finish)", default="SKIP")
                 
                 if choice.upper() == "SKIP":
-                    console.print("[cyan]Melewati pemilihan tombol. Lanjut ke Auto-Explore...[/cyan]")
-                    break # <--- INI KUNCINYA (Keluar dari loop)
-                    
+                    console.print("[cyan]Skipping button selection. Proceeding to Auto-Explore...[/cyan]")
+                    break
                 elif choice.isdigit():
                     try:
                         target = buttons[int(choice)-1]["locator"]
                         await target.click()
-                        console.print("[green]✅ Tombol diklik! Menunggu halaman...[/green]")
+                        console.print("[green]✅ Button clicked! Waiting for page...[/green]")
                         await page.wait_for_timeout(5000)
                         step += 1
                         continue
                     except Exception as e:
-                        console.print(f"[red]Gagal klik: {e}[/red]")
+                        console.print(f"[red]Failed to click: {e}[/red]")
             else:
-                console.print("[red]❌ Tidak ada tombol/link yang bisa diklik.[/red]")
-                ask = Prompt.ask("[yellow]Apakah ini halaman akhir? (y/n)[/yellow]", default="y")
+                console.print("[red]❌ No clickable buttons/links found.[/red]")
+                ask = Prompt.ask("[yellow]Is this the final page? (y/n)[/yellow]", default="y")
                 if ask == "y":
                     break
 
         # ================= AUTO EXPLORE =================
-        console.print("\n[bold cyan]🔍 Auto-Explore API...[/bold cyan]")
+        console.print("\n[bold cyan]🔍 Auto-Exploring APIs...[/bold cyan]")
         links = await page.locator("a").all()
         for i, link in enumerate(links[:15]):
             try:
@@ -184,13 +179,13 @@ async def run_sniffer(url):
                 await page.wait_for_timeout(3000)
             except: pass
             
-        console.print(f"[green]✅ Selesai! {len(captured_requests)} API ditemukan.[/green]")
+        console.print(f"[green]✅ Finished! {len(captured_requests)} APIs found.[/green]")
         
         with open("api_capture.txt", "w") as f:
             for req in captured_requests:
                 f.write(req + "\n")
                 
-        await asyncio.to_thread(input, "\nTekan ENTER untuk menutup browser...\n")
+        await asyncio.to_thread(input, "\nPress ENTER to close browser...\n")
         await browser.close()
 
 async def handle_response(response, captured_set):
