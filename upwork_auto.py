@@ -47,11 +47,30 @@ async def analyze_with_ai(title, description):
         "task": "Detailed technical breakdown of what needs to be built.",
         "action": "Step-by-step technical approach (libraries, APIs, architecture).",
         "result": "Expected business outcome for the client.",
-        "estimated_cost_usd": 1.50,
+        "estimated_cost_usd": X.XX,
         "reasoning": "Why this cost?",
         "conclusion": "Apakah proyek ini bisa dikerjakan oleh freelancer yang dibantu AI (bukan full auto-code)? Jelaskan bagian tersulitnya.",
-        "ai_prompt": "Buatkan prompt super detail yang bisa di-copy-paste ke Claude/GPT untuk men-generate struktur kode/scaffolding proyek ini."
+        "ai_prompt": "Buatkan prompt super detail yang bisa di-copy-paste ke Claude/GPT untuk men-generate struktur kode/scaffolding proyek ini.",
+        "resource_breakdown": [
+            {{
+                "item": "Nama Resource (VPS, Proxy, Database, API)",
+                "platform_recommendation": "Platform (DigitalOcean, BrightData)",
+                "spec": "Spec detail (1 vCPU, 1GB RAM)",
+                "estimated_cost_usd": X.XX,
+                "cost_period": "monthly / yearly / one-time",
+                "reason": "Alasan teknis kenapa butuh resource ini"
+            }}
+        ],
+        "total_operational_cost_usd": X.XX,
+        "total_project_cost": X.XX
     }}
+    
+    ATURAN KETAT:
+    1. JANGAN PERNAH ngasih harga $0.00 buat VPS/Server. Minimal $5/bulan.
+    2. HITUNG TOTAL PROJECT COST DARI NOL. Jangan asal copy angka 150.
+    3. Total biaya proyek = (Estimasi Dev (Level: Easy $20-$50, Medium $50-$150, Hard $150-$500) + Operational Cost).
+    4. JSON HARUS VALID. Jangan ada trailing comma di akhir array/object.
+    5. Sesuaikan resource dengan proyek. Proyek Data Entry gak butuh Proxy mahal. Proyek Instagram Bot butuh VPS + Proxy.
     
     Project Title: {title}
     Description: {description[:2000]}
@@ -79,8 +98,9 @@ async def analyze_with_ai(title, description):
                 return json.loads(raw_json)
             except json.JSONDecodeError as e:
                 console.print(f"[warning]Raw JSON Error: {e}[/warning]")
-                # Coba bersihin control character
+                # Coba bersihin control character & trailing commas
                 clean_json = re.sub(r'[\x00-\x1F\x7F]', ' ', raw_json)
+                clean_json = re.sub(r',\s*([\]}])', r'\1', clean_json) # Hapus trailing comma
                 try:
                     return json.loads(clean_json)
                 except Exception as e2:
@@ -95,8 +115,19 @@ async def analyze_with_ai(title, description):
 async def main():
     async with async_playwright() as p:
         console.print("[cyan]Opening browser (Stealth Mode)...[/cyan]")
-        browser = await p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled", "--no-sandbox"])
-        context = await browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        browser = await p.chromium.launch(
+            headless=False, 
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--start-maximized"
+            ]
+        )
+        context = await browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080}
+        )
         
         try:
             with open("cookies.json", "r") as f:
@@ -108,7 +139,13 @@ async def main():
             return
 
         page = await context.new_page()
-        await page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        
+        # Sembunyiin jejak webdriver & bahasa
+        await page.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+            Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+        """)
         
         keyword = Prompt.ask("\nEnter project keyword").strip()
         if not keyword: return
@@ -177,6 +214,21 @@ async def main():
             console.print("="*60)
             console.print(f"[bold green]KESIMPULAN (Feasibility):[/bold green]\n{ai_result.get('conclusion')}\n")
             console.print(f"[bold magenta]PROMPT UNTUK DEPLOY (Copy-Paste ke Claude/GPT):[/bold magenta]\n{ai_result.get('ai_prompt')}")
+            console.print("="*60)
+            console.print("[bold red]ANALISA RESOURCE & BIAYA OPERASIONAL:[/bold red]")
+            resources = ai_result.get('resource_breakdown', [])
+            if isinstance(resources, list):
+                for res in resources:
+                    period = res.get("cost_period", "monthly")
+                    period_short = "/bln" if "month" in period else ("/thn" if "year" in period else "")
+                    console.print(f"  - {res.get('item')} ({res.get('platform_recommendation')})")
+                    console.print(f"    Spec: {res.get('spec')}")
+                    console.print(f"    Cost: ${res.get('estimated_cost_usd', 0):.2f}{period_short} | Reason: {res.get('reason')}")
+            else:
+                console.print(f"  {resources}")
+
+            console.print(f"\n[bold red]TOTAL BIAYA OPERASIONAL:[/bold red] ${ai_result.get('total_operational_cost_usd', 0):.2f}")
+            console.print(f"[bold red]TOTAL ESTIMASI BIAYA PROYEK:[/bold red] ${ai_result.get('total_project_cost', 0.00):.2f}")
             console.print("="*60 + "\n")
             
             # Simpen ke CSV
@@ -189,7 +241,9 @@ async def main():
                 "Action": ai_result.get('action'),
                 "Result": ai_result.get('result'),
                 "Conclusion": ai_result.get('conclusion'),
-                "AI_Prompt": ai_result.get('ai_prompt')
+                "AI_Prompt": ai_result.get('ai_prompt'),
+                "Resource_Breakdown": ai_result.get('resource_breakdown'),
+                "Total_Project_Cost": f"${ai_result.get('total_project_cost', 0.00):.2f}"
             }])
             df.to_csv("Upwork_Deep_Analysis.csv", index=False)
             console.print("[green]✅ Saved to Upwork_Deep_Analysis.csv[/green]")
