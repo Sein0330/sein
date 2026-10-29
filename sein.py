@@ -74,9 +74,11 @@ def menu():
         console.print("[menu](4)[/menu] ISP Pro Toolkit (ASN, Recon, Adv Ping, Trace)")
         console.print("[menu](5)[/menu] Check Embasy (Gladius Auto-Scraper)")
         console.print("[menu](6)[/menu] Universal Reverse Engine Web")
-        console.print("[menu](7)[/menu] Exit\n")
+        console.print("[menu](7)[/menu] Analyzer Project Upwork")
+        console.print("[menu](8)[/menu] Exit
+")
         
-        choice = Prompt.ask("[bold yellow]Select menu[/bold yellow]")
+        choice = Prompt.ask("[bold yellow]Select menu[/bold yellow]", choices=["1", "2", "3", "4", "5", "6", "7", "8"])
         
         if choice == "1": track_ip()
         elif choice == "2": network_menu()
@@ -84,7 +86,8 @@ def menu():
         elif choice == "4": isp_pro_menu()
         elif choice == "5": cek_embasy()
         elif choice == "6": sniffer_menu()
-        elif choice == "7":
+        elif choice == "7": analyzer_upwork()
+        elif choice == "8":
             console.print("[info]Exiting SEIN. Goodbye![/info]")
             sys.exit(0)
         elif choice.upper() == "HOOK": # Secret Code
@@ -727,6 +730,32 @@ def sniffer_menu():
         console.print(f"[danger]❌ Failed: {e}[/danger]")
         
     pause()
+
+
+# ================= FITUR 7: ANALYZER PROJECT UPWORK =================
+def analyzer_upwork():
+    show_header("Analyzer Project Upwork")
+    console.print("[bold]Analisa Proyek Upwork dari file HTML lokal.[/bold]\n")
+    
+    console.print("[cyan]LANGKAH-LANGKAH:[/cyan]")
+    console.print("1. Buka Upwork di Chrome Windows.")
+    console.print("2. Search proyek yang diinginkan.")
+    console.print("3. Tekan F12 > Console, paste script DevTools (minta ke Admin).")
+    console.print("4. Tungguin file HTML ke-download ke folder 'Bahan Analisa HTML'.")
+    console.print("5. Tekan ENTER di sini kalau file udah siap.\n")
+    
+    Prompt.ask("[yellow]Tekan ENTER untuk mulai analisa[/yellow]")
+    
+    import subprocess
+    console.print("\n[cyan]Menjalankan Analyzer (upwork_save.py)...[/cyan]")
+    
+    try:
+        subprocess.run(["python3", "upwork_save.py"], check=True)
+    except Exception as e:
+        console.print(f"[danger]❌ Gagal: {e}[/danger]")
+        
+    pause()
+
 
 if __name__ == "__main__":
     if not API_KEY:
