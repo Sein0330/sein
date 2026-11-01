@@ -79,3 +79,6 @@ scrape_*.py
 test_*.py
 sniffer_module_backup.py
 universal_sniffer_backup.py
+*.bak_*
+*.csv
+Bahan Analisa HTML/
